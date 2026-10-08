@@ -1,4 +1,4 @@
-# Local repair, version 1.2.14
+# Local repair, version 1.2.15
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -6,6 +6,15 @@ The upstream MIT license and original assets are retained.
 Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
+
+- Recognize the Blackboard bootstrap body together with vendor metadata before
+  navigation components finish loading.
+- Remember structurally detected sites locally for 30 days, restoring saved
+  themes on known Blackboard routes during refresh. Unrelated routes and PDFs
+  remain excluded; cache failures do not block structural detection.
+- Restore extension styles if startup hydration removes them or replaces the
+  document head. Reattach surface scanning when the document body is replaced.
+  Disabling themes and PDF exclusions take precedence over style recovery.
 
 - Replace feedback contact information with only https://github.com/redin4ever.
 
@@ -68,7 +77,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-66 automated checks passed with a simulated DOM and Chrome storage. They cover
+78 automated checks passed with a simulated DOM and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.
@@ -91,6 +100,9 @@ Detection checks cover custom university domains, Ultra markup, Classic assets,
 HTTP installations, late or updated metadata and same-origin frames. They also
 verify that mere product mentions, external assets, cross-origin frames and PDF
 documents do not activate themes or cause preference reads and API requests.
+Refresh checks cover saved dark and custom themes without initial page markers,
+expired caches, storage failures, unrelated routes, bootstrap markup, removed
+stylesheets, replaced heads and bodies, disabled themes and late PDF viewers.
 
 No browser automation was used. Signed-in rendering across universities remains
 unverified; pages may contain additional selectors not covered by this repair.

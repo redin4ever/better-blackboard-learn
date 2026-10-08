@@ -11,6 +11,10 @@ let started = false;
 let loaded = false;
 let earlyChanges = {};
 let surfaceObserver = null;
+let surfaceRoot = null;
+let stylesheetObserver = null;
+let restoreQueued = false;
+const expectedSheets = new Set();
 let surfacesEnabled = false;
 let scanQueued = false;
 const markedSurfaces = new Set();
@@ -20,11 +24,34 @@ let gradeAccent = '#e7e7e7';
 const themeKeys = new Set(Object.keys(defaults));
 let detectionObserver = null;
 let detectionQueued = false;
+const detectionCacheKey = 'bbl-detected:' + domain;
+const detectionCacheAge = 30 * 24 * 60 * 60 * 1000;
+let detectionCacheRead = false;
+let rememberedPage = null;
+
+function rememberedBlackboard() {
+    if (!rememberedPage || typeof rememberedPage.route !== 'string' ||
+        !Number.isFinite(rememberedPage.confirmedAt) ||
+        Date.now() - rememberedPage.confirmedAt < 0 || Date.now() - rememberedPage.confirmedAt > detectionCacheAge) return false;
+    const path = window.location.pathname || '/';
+    // Do not apply a learned site's theme to unrelated pages on the same host.
+    return path === rememberedPage.route ||
+        /^\/(?:ultra(?:\/|$)|webapps\/(?:blackboard|bbng|bbgs|portal|assessment|gradebook)(?:\/|$))/i.test(path);
+}
+
+function rememberBlackboard() {
+    if (window.top !== window || !isBlackboardPage()) return;
+    const entry = { route: window.location.pathname || '/', confirmedAt: Date.now() };
+    chrome.storage.local.set({ [detectionCacheKey]: entry }, () => { void chrome.runtime.lastError; });
+}
 
 // Match product-specific markup and locally loaded assets, not page titles,
 // mentions of Blackboard, or links to another university's learning system.
 function isBlackboardPage(doc = document, location = window.location) {
     if (doc.querySelector('bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"]')) return true;
+    if (doc.querySelector('body#learn-oe-body') &&
+        [...doc.querySelectorAll('meta[name="author" i], meta[name="copyright" i]')].some(meta =>
+            /\bblackboard\b/i.test(meta.getAttribute('content') || ''))) return true;
     for (const meta of doc.querySelectorAll('meta[name="generator" i]')) {
         if (/^blackboard(?:\s+learn)?(?:\s|$)/i.test((meta.getAttribute('content') || '').trim())) return true;
     }
@@ -40,7 +67,7 @@ function isBlackboardPage(doc = document, location = window.location) {
 }
 
 function detectedBlackboard() {
-    if (isBlackboardPage()) return true;
+    if (isBlackboardPage() || rememberedBlackboard()) return true;
     // Classic course frames can inherit detection only from a same-origin
     // Blackboard parent. Cross-origin embeds and PDF viewers stay excluded.
     try {
@@ -49,11 +76,19 @@ function detectedBlackboard() {
     } catch { return false; }
 }
 
-const detectionMarkers = 'meta, script[src], link[href], bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"], [bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema';
+const detectionMarkers = 'meta, script[src], link[href], body#learn-oe-body, bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"], [bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema';
 
 function watchForBlackboard() {
     if (started || isPDFDocument()) return;
     startExtension();
+    if (!started && !detectionCacheRead) {
+        detectionCacheRead = true;
+        chrome.storage.local.get(detectionCacheKey, saved => {
+            if (chrome.runtime.lastError) return;
+            rememberedPage = saved[detectionCacheKey];
+            startExtension();
+        });
+    }
     if (started || detectionObserver || !document.documentElement) return;
     detectionObserver = new MutationObserver(records => {
         const relevant = records.some(record => record.type === 'attributes' ||
@@ -68,7 +103,7 @@ function watchForBlackboard() {
         });
     });
     detectionObserver.observe(document.documentElement, { childList: true, subtree: true,
-        attributes: true, attributeFilter: ['src', 'href', 'name', 'content', 'data-analytics-id', 'bb-translate', 'bb-click-to-invoke-child'] });
+        attributes: true, attributeFilter: ['id', 'src', 'href', 'rel', 'name', 'content', 'data-analytics-id', 'bb-translate', 'bb-click-to-invoke-child'] });
 }
 
 const pdfRoots = '.pdfViewer, .pdf-viewer, pdf-viewer, #viewerContainer, .textLayer, .annotationLayer, .canvasWrapper, .react-pdf__Document, .react-pdf__Page, .rpv-core__viewer, .document-viewer, .documentViewer, .file-preview, [data-testid="pdf-viewer"], [data-test-id="pdf-viewer"], [data-analytics-id*="pdf-viewer" i], [class*="pdf-viewer" i], [class*="pdfviewer" i]';
@@ -126,13 +161,30 @@ function color(value, fallback) {
 function setSheet(id, css) {
     const old = document.getElementById(id);
     if (!css) {
+        expectedSheets.delete(id);
         if (old) old.remove();
         return;
     }
+    expectedSheets.add(id);
     const sheet = old || document.createElement('style');
     sheet.id = id;
     sheet.textContent = css;
     if (!old) (document.head || document.documentElement).appendChild(sheet);
+}
+
+function watchStylesheets() {
+    if (stylesheetObserver) return;
+    stylesheetObserver = new MutationObserver(() => {
+        if (restoreQueued || (!([...expectedSheets].some(id => !document.getElementById(id))) &&
+            !(surfacesEnabled && surfaceRoot !== document.body))) return;
+        restoreQueued = true;
+        requestAnimationFrame(() => {
+            restoreQueued = false;
+            renderOptions();
+        });
+    });
+    // Blackboard can rebuild its head or body during initial hydration.
+    stylesheetObserver.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 // Blackboard changes generated class names. Detect neutral light UI backgrounds
@@ -308,6 +360,7 @@ function updateSurfaceFix(enabled) {
     if (!enabled) {
         if (surfaceObserver) surfaceObserver.disconnect();
         surfaceObserver = null;
+        surfaceRoot = null;
         scanRoots.clear();
         for (const element of gradeTextStyles.keys()) restoreGradeForeground(element);
         for (const element of markedSurfaces) {
@@ -317,7 +370,12 @@ function updateSurfaceFix(enabled) {
         markedSurfaces.clear();
         return;
     }
+    if (surfaceRoot !== document.body) {
+        surfaceObserver?.disconnect();
+        surfaceObserver = null;
+    }
     if (surfaceObserver || !document.body) return;
+    surfaceRoot = document.body;
     markLightSurfaces(document.body);
     surfaceObserver = new MutationObserver(records => {
         if (isPDFDocument()) { clearDocumentStyles(); return; }
@@ -536,6 +594,7 @@ function startExtension() {
     detectionObserver?.disconnect();
     detectionObserver = null;
     chrome.storage.onChanged.addListener(onPreferencesChanged);
+    rememberBlackboard();
     chrome.storage.sync.get(null, saved => {
         if (chrome.runtime.lastError) {
             console.warn('Better Blackboard: saved preferences could not be loaded.');
@@ -544,6 +603,7 @@ function startExtension() {
         earlyChanges = {};
         loaded = true;
         renderOptions();
+        watchStylesheets();
     });
     if (window.top === window) void loadCourseList();
 }

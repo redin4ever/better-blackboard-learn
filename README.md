@@ -13,7 +13,9 @@ A repaired Chrome extension for dark mode and custom themes on Blackboard Learn,
 
 ## Automatic detection
 
-The extension recognizes Blackboard generator metadata, Ultra navigation and component markup, and same-origin Classic scripts or stylesheets. It also checks for markers added after the page loads. A page title, a mention of Blackboard, or an external Blackboard link does not activate theming.
+The extension recognizes Blackboard generator metadata, bootstrap bodies with vendor metadata, Ultra navigation and component markup, and same-origin Classic scripts or stylesheets. It also checks for markers added after the page loads. A page title, a mention of Blackboard, or an external Blackboard link does not activate theming.
+
+Detected sites are remembered locally for 30 days. On refresh, the saved theme can return on recognized Blackboard routes before the page finishes loading its markers. If Blackboard replaces the extension's styles or rebuilds the page during startup, the extension restores the styles and background scanning.
 
 Same-origin course frames can inherit detection from their Blackboard parent. PDF viewers remain excluded. Heavily customized installations that remove all recognized markers may need additional detection rules.
 
@@ -39,11 +41,11 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 66 automated checks use simulated DOM and Chrome storage fixtures. They cover custom-domain detection, late-loading markers, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
+The 78 automated checks use simulated DOM and Chrome storage fixtures. They cover refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 
-Uses Chrome's `storage` permission for preferences. Content scripts match HTTP and HTTPS pages so Blackboard can be detected on any domain. Chrome documents these patterns in its [match pattern reference](https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns).
+Uses Chrome's `storage` permission for preferences and a local detection cache containing recognized origins, routes, and confirmation times. Content scripts match HTTP and HTTPS pages so Blackboard can be detected on any domain. Chrome documents these patterns in its [match pattern reference](https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns).
 
 Unrecognized pages receive no theme styles, preference reads, or Blackboard API requests. Once Blackboard is detected, optional course metadata is requested from the current site's origin. See [repair notes](REPAIR-NOTES.md) for the changes.
 

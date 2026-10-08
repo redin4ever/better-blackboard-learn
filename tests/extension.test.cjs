@@ -11,13 +11,15 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 
 // A DOM and Chrome-storage fixture. No browser or user session is controlled.
 function detectionSelector(selector = '') {
-    return /bb-base-layout|^meta|^script\[src\]|^\[bb-translate\]/.test(selector);
+    return /bb-base-layout|^meta|^body#learn-oe-body|^script\[src\]|^\[bb-translate\]/.test(selector);
 }
 function matchesDetection(element, selector) {
     return selector.split(',').some(part => {
         const rule = part.trim();
         const tag = /^[\w-]+/.exec(rule)?.[0];
         if (tag && element.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+        const id = /#([\w-]+)/.exec(rule)?.[1];
+        if (id && element.id !== id) return false;
         for (const match of rule.matchAll(/\[([\w-]+)(?:="([^"]*)"( i)?)?\]/g)) {
             const value = element.getAttribute(match[1]);
             if (value === null) return false;
@@ -90,7 +92,7 @@ function fixture(saved = {}, config = {}) {
         body.appendChild(generator);
     }
     doc.createElement = tag => new Element(tag);
-    doc.getElementById = id => elements.get(id) || head.children.find(child => child.id === id) || null;
+    doc.getElementById = id => elements.get(id) || (doc.head || doc.documentElement).children.find(child => child.id === id) || null;
     if (config.popup) {
         for (const match of popupHTML.matchAll(/id="([^"]+)"/g)) {
             const element = new Element(); element.id = match[1]; elements.set(element.id, element);
@@ -103,9 +105,19 @@ function fixture(saved = {}, config = {}) {
     }
     const storage = { ...saved };
     const storageReads = [];
+    const localStorage = config.localStorage || {};
+    const localReads = [];
     const listeners = [];
     let deferredRead;
     const chrome = { runtime: { lastError: null }, storage: {
+        local: {
+            get(key, callback) { localReads.push(key); queueMicrotask(() => {
+                if (config.cacheFailure) chrome.runtime.lastError = { message: 'Local storage unavailable' };
+                callback(key in localStorage ? { [key]: localStorage[key] } : {});
+                chrome.runtime.lastError = null;
+            }); },
+            set(values, callback) { Object.assign(localStorage, values); if (callback) queueMicrotask(callback); }
+        },
         sync: {
             get(keys, callback) {
                 storageReads.push(keys);
@@ -143,7 +155,7 @@ function fixture(saved = {}, config = {}) {
             if (config.fetch) return config.fetch(url, options);
             throw new Error('Simulated unavailable Blackboard API'); }
     });
-    return { doc, context, head, storage, storageReads, listeners, observers, window, chrome, elements, requests,
+    return { doc, context, head, storage, storageReads, localStorage, localReads, listeners, observers, window, chrome, elements, requests,
         addPanel(rgb, tag = 'div') { const panel = new Element(tag); panel.computed.backgroundColor = rgb; body.appendChild(panel); return panel; },
         async mutations(records) { for (const observer of observers) if (observer.connected) observer.callback(records); await flush(); },
         async run() { vm.runInContext(content, context); await flush(); },
@@ -311,6 +323,96 @@ test('PDF frames remain excluded even when their parent is detected as Blackboar
         pathname: '/files/lecture.pdf', parent: { document: parent.doc, location: parent.window.location } });
     await f.run(); assert.equal(f.css(), ''); assert.equal(f.storageReads.length, 0);
     assert.equal(f.observers.length, 0);
+});
+
+for (const saved of [{ colorscheme: 'dark' }, { customprimary: '#123456', customsecondary: '#abcdef' }]) {
+    test('refresh restores the saved ' + (saved.colorscheme ? 'dark mode' : 'custom theme') + ' before page markers reappear', async () => {
+        const first = fixture(saved, { host: 'courses.example.edu', blackboard: true });
+        await first.run(); assert.ok(first.css());
+        const refreshed = fixture(saved, { host: 'courses.example.edu', blackboard: false, localStorage: first.localStorage });
+        await refreshed.run();
+        assert.equal(refreshed.css(), first.css()); assert.equal(refreshed.requests.length, 1);
+        assert.equal(refreshed.storageReads.length, 1);
+    });
+}
+
+test('a remembered Blackboard site does not theme unrelated university pages', async () => {
+    const first = fixture({ colorscheme: 'dark' }); await first.run();
+    const other = fixture({ colorscheme: 'dark' }, { blackboard: false, pathname: '/news', localStorage: first.localStorage });
+    await other.run(); assert.equal(other.css(), '');
+    assert.equal(other.requests.length, 0); assert.equal(other.storageReads.length, 0);
+});
+
+test('an expired detection cache requires fresh Blackboard evidence', async () => {
+    const first = fixture({ colorscheme: 'dark' }); await first.run();
+    Object.values(first.localStorage)[0].confirmedAt -= 31 * 24 * 60 * 60 * 1000;
+    const refreshed = fixture({ colorscheme: 'dark' }, { blackboard: false, localStorage: first.localStorage });
+    await refreshed.run(); assert.equal(refreshed.css(), ''); assert.equal(refreshed.requests.length, 0);
+});
+
+test('remembered detection cannot theme PDFs on a recognized origin', async () => {
+    const first = fixture({ colorscheme: 'dark' }); await first.run();
+    const pdf = fixture({ colorscheme: 'dark' }, { blackboard: false, pathname: '/ultra/files/lecture.pdf', localStorage: first.localStorage });
+    await pdf.run(); assert.equal(pdf.css(), ''); assert.equal(pdf.storageReads.length, 0);
+});
+
+test('unavailable detection storage does not block later structural detection', async () => {
+    const f = fixture({ colorscheme: 'dark' }, { host: 'courses.example.edu', blackboard: false, cacheFailure: true });
+    await f.run(); assert.equal(f.css(), '');
+    const root = f.addPanel('transparent', 'bb-base-layout');
+    await f.mutations([{ type: 'childList', addedNodes: [root] }]); assert.ok(f.css());
+});
+
+test('a first visit detects the Blackboard bootstrap body and vendor metadata before navigation', async () => {
+    const f = fixture({ colorscheme: 'dark' }, { host: 'learn.example.edu', blackboard: false, pathname: '/' });
+    f.doc.body.id = 'learn-oe-body';
+    const author = new Element('meta'); author.setAttribute('name', 'author'); author.setAttribute('content', 'Blackboard');
+    f.doc.body.appendChild(author); await f.run(); assert.ok(f.css());
+    assert.equal(f.requests.length, 1); assert.equal(Object.keys(f.localStorage).length, 1);
+});
+
+test('startup hydration cannot permanently remove the theme stylesheet', async () => {
+    const f = fixture({ colorscheme: 'dark' }); await f.run(); const expected = f.css();
+    const removed = f.doc.getElementById('bbl-theme'); removed.remove(); assert.equal(f.css(), '');
+    await f.mutations([{ type: 'childList', target: f.head, addedNodes: [], removedNodes: [removed] }]);
+    assert.equal(f.css(), expected); assert.equal(f.requests.length, 1);
+    assert.equal(f.head.children.length, 1);
+});
+
+test('replacing the page head restores custom theme, font and course styles', async () => {
+    const f = fixture({ customprimary: '#123456', customfont: 'Open Sans',
+        courseImageMap: [['_1_1', 'https://example.com/course.png']], courseNameMap: [['_1_1', 'My course']] });
+    await f.run(); const expected = f.css();
+    const oldHead = f.doc.head; oldHead.remove(); f.doc.head = new Element('head');
+    f.doc.documentElement.appendChild(f.doc.head);
+    await f.mutations([{ type: 'childList', target: f.doc.documentElement, addedNodes: [f.doc.head], removedNodes: [oldHead] }]);
+    assert.equal(f.css(), expected); assert.equal(f.doc.head.children.length, 4);
+    assert.match(f.doc.getElementById('bbl-font').textContent, /Open\+Sans/);
+    assert.match(f.doc.getElementById('bbl-names').textContent, /My course/);
+});
+
+test('replacing the page body reattaches background scanning to the new page', async () => {
+    const f = fixture({ colorscheme: 'dark' }); await f.run();
+    const oldBody = f.doc.body; oldBody.remove(); const oldObserver = f.observers[0];
+    f.doc.body = new Element('body'); f.doc.documentElement.appendChild(f.doc.body);
+    const panel = new Element('div'); panel.computed.backgroundColor = 'rgb(255, 255, 255)'; f.doc.body.appendChild(panel);
+    await f.mutations([{ type: 'childList', target: f.doc.documentElement, addedNodes: [f.doc.body], removedNodes: [oldBody] }]);
+    assert.equal(panel.getAttribute('data-bbl-surface'), 'light'); assert.equal(oldObserver.connected, false);
+});
+
+test('deliberately disabling themes is not undone by stylesheet recovery', async () => {
+    const f = fixture({ colorscheme: 'dark' }); await f.run(); const removed = f.doc.getElementById('bbl-theme');
+    await f.change({ colorscheme: 'default' });
+    await f.mutations([{ type: 'childList', target: f.head, addedNodes: [], removedNodes: [removed] }]);
+    assert.equal(f.css(), ''); assert.equal(f.head.children.length, 0);
+});
+
+test('stylesheet recovery keeps late PDF viewers excluded', async () => {
+    const f = fixture({ colorscheme: 'dark', customfont: 'Open Sans' }, { pathname: '/preview' });
+    await f.run(); const removed = f.doc.getElementById('bbl-theme'); removed.remove();
+    const viewer = f.addPanel('white'); viewer.classList.add('pdfViewer');
+    await f.mutations([{ type: 'childList', target: f.head, addedNodes: [viewer], removedNodes: [removed] }]);
+    assert.equal(f.css(), ''); assert.equal(f.head.children.length, 0);
 });
 test('sidebar matching updates course card backgrounds', async () => {
     const f = fixture({ colorscheme: 'dark', customsidebar: '#135790' }); await f.run();
