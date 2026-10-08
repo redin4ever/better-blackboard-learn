@@ -1,4 +1,4 @@
-# Local repair, version 1.2.15
+# Local repair, version 1.2.16
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -6,6 +6,12 @@ The upstream MIT license and original assets are retained.
 Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
+
+- Apply the primary and accent colors to the supplied course-page-header and
+  bb-course-navigation markup, including the header toolbar, Home and Courses
+  controls, course title, status badge, navigation tabs and active-tab border.
+  Use stable component names and analytics attributes instead of generated
+  class suffixes. Preserve the banner and all PDF selector exclusions.
 
 - Recognize the Blackboard bootstrap body together with vendor metadata before
   navigation components finish loading.

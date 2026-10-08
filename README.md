@@ -8,6 +8,7 @@ A repaired Chrome extension for dark mode and custom themes on Blackboard Learn,
 - Custom course names, course images, and fonts.
 - Theme updates for dynamically loaded course pages and frames.
 - Readable grade pills, including Arabic scores and ungraded placeholders.
+- Course headers, navigation tabs, and active-tab borders follow the selected theme.
 - PDF viewers excluded from theme changes.
 - Automatic detection of Blackboard Ultra and Classic pages on custom domains.
 

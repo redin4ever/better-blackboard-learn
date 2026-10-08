@@ -422,6 +422,50 @@ function renderTheme() {
       .MuiDrawer-paper, .MuiTableCell-root, .MuiList-root, .MuiCard-root {
         background-color: ${primary} !important; color: ${accent} !important;
       }
+      /* Course headers and tabs have their own dark surfaces and generated
+         React classes. Scope their overrides to stable component boundaries. */
+      :root body .bb-course-navigation,
+      :root body .bb-course-navigation course-page-header,
+      :root body .bb-course-navigation course-page-header header,
+      :root body .bb-course-navigation course-page-header [class*="makeStylestoolbar-"],
+      :root body .bb-course-navigation [data-analytics-id^="course.header."],
+      :root body .bb-course-navigation bb-course-navigation,
+      :root body .bb-course-navigation bb-course-navigation [role="toolbar"],
+      :root body .bb-course-navigation bb-course-navigation .js-course-navigation,
+      :root body .bb-course-navigation bb-course-navigation nav,
+      :root body .bb-course-navigation bb-course-navigation ul,
+      :root body .bb-course-navigation bb-course-navigation li,
+      :root body .bb-course-navigation bb-course-navigation a {
+        background-color: ${primary} !important;
+        background-image: none !important;
+        color: ${accent} !important;
+      }
+      :root body .bb-course-navigation course-page-header button,
+      :root body .bb-course-navigation course-page-header a,
+      :root body .bb-course-navigation course-page-header span,
+      :root body .bb-course-navigation course-page-header .MuiTypography-root,
+      :root body .bb-course-navigation course-page-header svg,
+      :root body .bb-course-navigation bb-course-navigation a,
+      :root body .bb-course-navigation bb-course-navigation span,
+      :root body .bb-course-navigation bb-course-navigation svg {
+        color: ${accent} !important;
+        -webkit-text-fill-color: ${accent} !important;
+      }
+      :root body .bb-course-navigation course-page-header .MuiDivider-root,
+      :root body .bb-course-navigation course-page-header .MuiBadge-badge {
+        border-color: ${accent} !important;
+      }
+      :root body .bb-course-navigation course-page-header .MuiBadge-badge {
+        background-color: ${primary} !important;
+      }
+      :root body .bb-course-navigation bb-course-navigation a.active,
+      :root body .bb-course-navigation bb-course-navigation a[aria-current="page"],
+      :root body .bb-course-navigation bb-course-navigation a.active::before,
+      :root body .bb-course-navigation bb-course-navigation a.active::after,
+      :root body .bb-course-navigation bb-course-navigation a[aria-current="page"]::before,
+      :root body .bb-course-navigation bb-course-navigation a[aria-current="page"]::after {
+        border-bottom-color: ${accent} !important;
+      }
       :root body [data-bbl-surface="light"][data-bbl-surface="light"] {
         background-color: ${primary} !important; color: ${accent} !important;
         border-color: ${dark ? '#454545' : accent} !important;
