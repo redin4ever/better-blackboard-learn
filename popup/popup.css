@@ -1,0 +1,556 @@
+/* Main Background and Container */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
+body {
+  height: 370px;
+  width: 250px; 
+  font-family: 'Open Sans', sans-serif; 
+  background-color: #1f1f1f;
+}
+
+#gradient {
+  height: 500px; 
+  width: calc(100% + 30px);
+  margin-left: -15px;
+  position: absolute;
+  z-index: -1;
+  opacity: .6;
+  top: -230px;
+  background: 
+    radial-gradient(at 50% 0%, hsla(283, 99%, 27%, 0.8) 0px, transparent 60%), 
+    radial-gradient(at 90% 0%, hsla(290, 84%, 22%, 0.8) 0px, transparent 60%), 
+    radial-gradient(at 10% 0%, hsla(286, 92%, 40%, 0.994) 0px, transparent 60%), 
+    linear-gradient(to bottom, hsla(30, 100%, 50%, 0.723), transparent);
+  }
+
+#header {
+  display: block;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0px 4px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#title {
+  color: white;
+  right: 4px;
+  font-size: 23px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.BB-logo {
+  position: absolute;
+  right: 8px;
+  top: 20px;
+  width: 32px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* Standard Tag Style */
+button {
+  background-color: #474646; 
+  color: white; 
+  padding: 8px 16px; 
+  border: none; 
+  cursor: pointer; 
+  transition: background-color 0.3s ease; 
+  text-align: center; 
+  border-radius: 5%;
+}
+
+button:hover {
+  filter: brightness(1.2)
+}
+
+input {
+  background-color: #0c0c0c; 
+  color: white; 
+  border: none;
+}
+
+option {
+  width: 180px;
+}
+ .action-buttons {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  gap: 8px; 
+  margin-bottom: 6px;
+}
+
+.save-setting-button,
+.remove-setting-button {
+  flex-direction: row;
+  width: 112px !important;
+  height: 44px !important;
+  border-radius: 14px;
+  color: white;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.2s ease;
+}
+
+.save-setting-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+
+.remove-setting-button {
+  background: red;
+  border: white;
+}
+
+#card-options .action-buttons {
+  margin-top: 10px;
+}
+
+#font-options .action-buttons {
+  margin-top: 8px;
+  margin-bottom: 0px;
+}
+
+/* Settings Buttons on Main Page */
+#main-options {
+  display:flex; 
+  justify-content: center; 
+  text-align: center;
+}
+
+#main-options button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  color: white;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+#main-options button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#main-options button svg {
+  transition: all 0.2s ease;
+}
+#dark-theme-button {position: absolute; height: 45px; width: 55%; top: 24%; left: 50%; transform: translate(-50%, -50%); padding-left: 30px; border-radius: 5px;}
+
+#dark-theme-button.active {
+    background: linear-gradient(rgba(0, 255, 50, 0.6), rgba(0, 255, 50, 0.6)), 
+                rgba(255, 255, 255, 0.2) !important;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(0, 255, 50, 0.5);
+}
+
+#dark-theme-button:hover {
+    filter: brightness(1.15);
+}
+
+.dark-theme button svg {height: 50%; width: 50%; position: absolute; left: -13px; top: 50%; transform: translateY(-50%);}
+#custom-cards-button {position: absolute; padding-bottom: 10px; height: 100px; width: 100px; top: 44%; left: 71%; transform: translate(-50%, -50%);}
+.custom-cards svg {height: 20%; width: 20%; position: absolute; left: 50%; top: 80%; transform: translate(-50%, -50%);}
+#custom-themes-button {position: absolute; padding-bottom: 10px; height: 100px; width: 100px; top: 71%; left: 29%; transform: translate(-50%, -50%); text-align: center;}
+.custom-themes svg {height: 20%; width: 20%; position: absolute; left: 50%; top: 80%; transform: translate(-50%, -50%);}
+#custom-fonts-button {position: absolute; padding-bottom: 10px; height: 100px; width: 100px; top: 71%; left: 71%; transform: translate(-50%, -50%); text-align: center;}
+.custom-fonts svg {height: 20%; width: 20%; position: absolute; left: 50%; top: 80%; transform: translate(-50%, -50%);}
+#preset-themes-button {position: absolute; padding-bottom: 10px; height: 100px; width: 100px; top: 44%; left: 29%; transform: translate(-50%, -50%); text-align: center;}
+.preset-themes svg {height: 20%; width: 20%; position: absolute; left: 50%; top: 80%; transform: translate(-50%, -50%);}
+#report-issue-button {position: absolute; height: 45px; width: 45%; top: 92%; left: 50%; padding-left: 35px; transform: translate(-50%, -50%); text-align: center;}
+#report-issue-button svg {position: absolute; left: 10px; top: 50%; transform: translateY(-50%);}
+
+/* Custom Course Cards Page */
+#card-options {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  margin-top: -10px;
+}
+
+#custom-course-header {
+  font-size: 22px;
+  text-align: center;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.course-selection {
+  width: 220px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+  margin-bottom: 10px;
+  border-radius: 12px;
+  padding: 0px 6px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.course-selection h2 {
+  margin: 0px;
+  padding-bottom: 8px;
+  padding-top: 8px;
+  font-size: 16px;
+  text-align: center;
+}
+
+#card-options-select,
+#card-options-link,
+#card-options-name {
+  margin: 0px 6px 4px 6px;
+  height: 30px;
+  background: #000;
+  border-radius: 4px;
+  color: white;
+  box-sizing: border-box;
+}
+
+.course-help {
+  margin: 0;
+  font-size: 11px;
+  color: #aaa;
+  text-align: center;
+}
+
+/* Custom Themes Page */
+#custom-theme-options {display: none; flex-direction: column; align-items: center; text-align: center; color: white;}
+#custom-theme-header {position: relative; bottom: 20px; font-size: 22px; text-align: left;}
+
+/* Checkbox */
+/* Sidebar course option container */
+.sidebar-course-option {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+/* Custom checkbox layout */
+.custom-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  user-select: none;
+}
+
+/* Hide default checkbox */
+.custom-checkbox input {
+  display: none;
+}
+
+/* Custom checkbox box */
+.checkbox-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--inputbg);
+  border: 1px solid rgba(255,255,255,0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+/* Checkmark */
+.checkbox-box::after {
+  /* content: '✔'; */
+  content: "\2714";
+  font-size: 13px;
+  color: white;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.15s ease;
+}
+
+/* Checked state */
+.custom-checkbox input:checked + .checkbox-box {
+  background: #00de3b;
+  border-color: #00de3b;
+}
+
+.custom-checkbox input:checked + .checkbox-box::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Color Picker */
+.palette-selection {
+  position: relative;
+  bottom: 24px;
+  width: 220px;
+  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 8px 10px 8px;
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.palette-selection h2 {
+  margin: 0 0 4px 0;
+  width: 100%;
+  font-size: 18px;
+}
+
+/* Custom Color Input */
+.color-text,
+.color-button {
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.color-input {
+  height: 38px; 
+  width: 38px; 
+  border: none; 
+  background: var(--inputbg); 
+  border-radius: 4px;
+}
+
+.color-input::-webkit-color-swatch, .color-input::-moz-color-swatch {
+  border-radius: 4px; 
+  border: 7px solid #000000;
+}
+
+.color-text {
+  width: 110px; 
+  background: #000; 
+  border-radius: 3px; 
+  padding: 2px; 
+  box-sizing: border-box;
+}
+
+.color-button {
+  width:50px; 
+  border-radius: 4px; 
+  padding: 0; 
+  text-align: center; 
+  background-color: black; 
+  box-sizing: border-box;
+}
+
+#custom-theme-action-buttons {
+  flex-direction: row;
+  margin-top: -18px;
+}
+
+ /* Preset Themes */
+#preset-theme-options {
+  padding: 8px;
+  margin-top: -18px;
+  box-sizing: border-box;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  color: white;
+}
+
+/* Header */
+#preset-themes-header {
+  padding-bottom: 12px;
+  font-size: 22px;
+  text-align: center;
+}
+
+/* Buttons container */
+#preset-theme-buttons {
+  position: relative;
+  bottom: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+/* Theme buttons */
+#preset-theme-buttons button {
+  height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+  font-size: 14px;
+  border-radius: 6px;
+  background: #474646;
+  border: 1px solid #474646;
+  color: white;
+  font-weight: bold;
+  transition: filter 0.2s;
+  cursor: pointer;
+}
+
+/* Custom Fonts */
+#font-options {
+  padding: 8px;
+  margin-top: -18px;
+  box-sizing: border-box;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  color: white;
+}
+
+/* Header */
+#custom-fonts-header {
+  padding-bottom: 12px;
+  position: relative;
+  font-size: 22px;
+  text-align: center;
+}
+
+#custom-font-buttons {
+  position: relative;
+  bottom: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  padding: 4xpx;
+  background:rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+#custom-font-buttons button {
+  height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+  font-size: 14px;
+  border-radius: 6px;
+  background: #474646;
+  border: 1px solid #474646;
+  color: white;
+  font-weight: bold;
+  transition: filter 0.2s;
+}
+
+#custom-font-input-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Font input */
+#user-custom-font {
+  height: 28px;
+  border-radius: 4px;
+  background-color: #000;
+  color: white;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#report-issue-options {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  box-sizing: border-box;
+  color: white;
+  text-align: center;
+}
+
+#report-issue-header {
+  margin-bottom: 10px;
+  font-size: 22px;
+}
+
+.contact-icons-panel,
+#contact-card {
+  width: 100%;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 14px 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#report-issue-text {
+  margin: 0;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+#contact-card h3 {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+#contact-icons {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.contact-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.contact-icon:hover {
+  background: rgba(255,255,255,0.18);
+  transform: scale(1.08);
+}
+
+.contact-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: white;
+}
+
+#return-to-menu-options {
+  border-radius: 14px;
+  color: white;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.email-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.email-link:hover .email-text {
+  text-decoration: underline;
+}

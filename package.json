@@ -1,0 +1,13 @@
+{
+  "name": "better-blackboard-learn-fixed",
+  "version": "1.2.13",
+  "private": true,
+  "description": "Repaired Chrome themes for IAU Blackboard",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test tests/extension.test.cjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
