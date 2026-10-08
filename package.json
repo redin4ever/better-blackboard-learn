@@ -1,8 +1,8 @@
 {
   "name": "better-blackboard-learn-fixed",
-  "version": "1.2.13",
+  "version": "1.2.14",
   "private": true,
-  "description": "Repaired Chrome themes for IAU Blackboard",
+  "description": "Repaired Chrome themes with automatic Blackboard Learn detection",
   "license": "MIT",
   "scripts": {
     "test": "node --test tests/extension.test.cjs"

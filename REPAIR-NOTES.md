@@ -1,4 +1,4 @@
-# Local repair, version 1.2.13
+# Local repair, version 1.2.14
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -9,8 +9,12 @@ Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 - Replace feedback contact information with only https://github.com/redin4ever.
 
-- Recognize vle.iau.edu.sa and Blackboard cloud domains without requiring a
-  successful user API response before applying a theme.
+- Detect Blackboard on custom domains through generator metadata, Ultra markup
+  and same-origin Classic assets without requiring a successful user API response.
+- Watch for late-loading detection markers and stop the detection observer after
+  activation. Read preferences and register storage listeners only on detected pages.
+- Allow same-origin course frames to inherit Blackboard detection, preserving
+  PDF exclusions and isolating cross-origin frames.
 - Apply dark mode, preset colors and custom colors through a single stylesheet
   with predictable precedence. Custom values override presets and dark defaults.
 - Safely turn themes off and replace styles instead of accumulating duplicates.
@@ -51,7 +55,7 @@ Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 - Clear custom overrides when selecting a preset or enabling Dark Mode.
 - Remove inline color handlers that conflict with extension content security policy.
 - Preserve saved settings during local extension updates.
-- Limit site matching to IAU Blackboard and Blackboard cloud domains.
+- Match HTTP and HTTPS sites for automatic detection without a university allowlist.
 - Skip native PDFs, direct PDF file URLs and standalone or embedded PDF viewer
   documents. Exclude inline PDF viewer roots, pages, annotations and text layers
   from every theme selector, custom font selector and adaptive background scan.
@@ -64,7 +68,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-52 automated checks passed with a simulated DOM and Chrome storage. They cover
+66 automated checks passed with a simulated DOM and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.
@@ -83,5 +87,10 @@ Filled-pill fixtures cover the supplied Arabic score markup on green, an outline
 dark pill and a pill whose background changes during a redraw.
 All three JavaScript files passed syntax checks. Manifest references exist.
 
-No browser automation was used. Signed-in rendering on vle.iau.edu.sa remains
-unverified; the page may contain additional selectors not covered by this repair.
+Detection checks cover custom university domains, Ultra markup, Classic assets,
+HTTP installations, late or updated metadata and same-origin frames. They also
+verify that mere product mentions, external assets, cross-origin frames and PDF
+documents do not activate themes or cause preference reads and API requests.
+
+No browser automation was used. Signed-in rendering across universities remains
+unverified; pages may contain additional selectors not covered by this repair.

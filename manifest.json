@@ -16,14 +16,14 @@
         "content/content.js"
       ],
       "matches": [
-        "https://vle.iau.edu.sa/*",
-        "https://*.blackboard.com/*"
+        "http://*/*",
+        "https://*/*"
       ],
       "run_at": "document_start",
       "all_frames": true
     }
   ],
-  "description": "Local repair of Better Blackboard Learn: dark mode and custom themes for IAU Blackboard.",
+  "description": "Dark mode and custom themes with automatic Blackboard Learn detection, including university domains.",
   "icons": {
     "16": "icons/BbOrangeGradient16.png",
     "48": "icons/BbOrangeGradient48.png",
@@ -35,5 +35,5 @@
   "permissions": [
     "storage"
   ],
-  "version": "1.2.13"
+  "version": "1.2.14"
 }

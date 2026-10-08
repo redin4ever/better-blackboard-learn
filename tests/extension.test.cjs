@@ -10,6 +10,22 @@ const popupHTML = fs.readFileSync(path.join(root, 'popup/popup.html'), 'utf8');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
 // A DOM and Chrome-storage fixture. No browser or user session is controlled.
+function detectionSelector(selector = '') {
+    return /bb-base-layout|^meta|^script\[src\]|^\[bb-translate\]/.test(selector);
+}
+function matchesDetection(element, selector) {
+    return selector.split(',').some(part => {
+        const rule = part.trim();
+        const tag = /^[\w-]+/.exec(rule)?.[0];
+        if (tag && element.tagName.toLowerCase() !== tag.toLowerCase()) return false;
+        for (const match of rule.matchAll(/\[([\w-]+)(?:="([^"]*)"( i)?)?\]/g)) {
+            const value = element.getAttribute(match[1]);
+            if (value === null) return false;
+            if (match[2] !== undefined && (match[3] ? value.toLowerCase() !== match[2].toLowerCase() : value !== match[2])) return false;
+        }
+        return true;
+    });
+}
 class Element {
     constructor(tag = 'div') {
         this.tagName = tag; this.id = ''; this.textContent = ''; this.children = [];
@@ -30,11 +46,12 @@ class Element {
     replaceChildren(...children) { this.children = []; children.forEach(child => this.appendChild(child)); }
     get options() { return this.children; }
     get parentElement() { return this.parentNode || null; }
-    querySelector() { return this.querySelectorAll().find(element => element.classList.contains('pdfViewer') || element.id === 'viewerContainer') || null; }
-    querySelectorAll() { return this.children.flatMap(child => [child, ...child.querySelectorAll()]); }
+    querySelector(selector) { return detectionSelector(selector) ? this.querySelectorAll(selector)[0] || null : this.querySelectorAll().find(element => element.classList.contains('pdfViewer') || element.id === 'viewerContainer') || null; }
+    querySelectorAll(selector) { const all = this.children.flatMap(child => [child, ...child.querySelectorAll()]); return detectionSelector(selector) ? all.filter(element => matchesDetection(element, selector)) : all; }
     contains(other) { return this === other || this.querySelectorAll().includes(other); }
-    matches() { return ['grade-input-display', 'points-text', 'grade-pill', 'customGradePill', 'readonly-pill'].some(name => this.classList.contains(name)) || ['bb-grade-pill', 'bb-grading-schema'].includes(this.tagName); }
+    matches(selector) { if (detectionSelector(selector)) return matchesDetection(this, selector); return ['grade-input-display', 'points-text', 'grade-pill', 'customGradePill', 'readonly-pill'].some(name => this.classList.contains(name)) || ['bb-grade-pill', 'bb-grading-schema'].includes(this.tagName); }
     setAttribute(key, value) { this.attributes[key] = value; }
+    getAttribute(key) { return this.attributes[key] ?? null; }
     removeAttribute(key) { delete this.attributes[key]; }
     closest(selector = '') {
         if (selector === '.base-grades, .base-grades-wrapper, .base-grades-term-wrapper, .grades-list') {
@@ -67,6 +84,11 @@ function fixture(saved = {}, config = {}) {
     doc.documentElement.appendChild(body);
     doc.readyState = config.readyState || 'complete';
     doc.contentType = config.contentType || 'text/html';
+    if (config.blackboard ?? (!config.host || config.host.endsWith('.blackboard.com'))) {
+        const generator = new Element('meta');
+        generator.setAttribute('name', 'generator'); generator.setAttribute('content', 'Blackboard Learn');
+        body.appendChild(generator);
+    }
     doc.createElement = tag => new Element(tag);
     doc.getElementById = id => elements.get(id) || head.children.find(child => child.id === id) || null;
     if (config.popup) {
@@ -80,11 +102,13 @@ function fixture(saved = {}, config = {}) {
         elements.get('card-options-select').appendChild(new Element('option'));
     }
     const storage = { ...saved };
+    const storageReads = [];
     const listeners = [];
     let deferredRead;
     const chrome = { runtime: { lastError: null }, storage: {
         sync: {
             get(keys, callback) {
+                storageReads.push(keys);
                 const values = keys == null ? { ...storage } : Object.fromEntries(
                     (Array.isArray(keys) ? keys : [keys]).filter(key => key in storage).map(key => [key, storage[key]]));
                 if (!callback) return Promise.resolve(values);
@@ -100,8 +124,9 @@ function fixture(saved = {}, config = {}) {
         },
         onChanged: { addListener: callback => listeners.push(callback) }
     } };
-    const window = { location: { origin: 'https://' + (config.host || 'vle.iau.edu.sa'), hostname: config.host || 'vle.iau.edu.sa', pathname: config.pathname || '/ultra/courses/_1_1/outline' } };
+    const window = { location: { origin: (config.protocol || 'https:') + '//' + (config.host || 'learn.example.edu'), hostname: config.host || 'learn.example.edu', pathname: config.pathname || '/ultra/courses/_1_1/outline' } };
     window.top = config.frame ? {} : window;
+    window.parent = config.parent || window;
     const requests = [];
     const observers = [];
     const context = vm.createContext({ window, document: doc, chrome, console: { warn() {}, log() {}, error() {} },
@@ -113,12 +138,12 @@ function fixture(saved = {}, config = {}) {
             disconnect() { this.connected = false; }
         },
         CSS: { supports: (_, value) => /^(#[0-9a-f]{3,8}|white|black|orange)$/i.test(value), escape: value => value.replace(/[^\w-]/g, '\\$&') },
-        AbortSignal, encodeURIComponent, Map, Set, Promise, Image: class {},
+        AbortSignal, encodeURIComponent, Map, Set, Promise, URL, Image: class {},
         fetch: async (url, options) => { requests.push({ url, options });
             if (config.fetch) return config.fetch(url, options);
             throw new Error('Simulated unavailable Blackboard API'); }
     });
-    return { doc, context, head, storage, chrome, elements, requests,
+    return { doc, context, head, storage, storageReads, listeners, observers, window, chrome, elements, requests,
         addPanel(rgb, tag = 'div') { const panel = new Element(tag); panel.computed.backgroundColor = rgb; body.appendChild(panel); return panel; },
         async mutations(records) { for (const observer of observers) if (observer.connected) observer.callback(records); await flush(); },
         async run() { vm.runInContext(content, context); await flush(); },
@@ -201,6 +226,92 @@ test('Blackboard cloud domains work and unrelated sites stay untouched', async (
     const other = fixture({ colorscheme: 'dark' }, { host: 'example.com' }); await other.run();
     assert.equal(other.css(), ''); assert.equal(other.requests.length, 0);
 });
+
+test('Blackboard generator metadata enables themes on a custom university domain', async () => {
+    const f = fixture({ colorscheme: 'dark' }, { host: 'courses.university.example', blackboard: true, pathname: '/' });
+    await f.run(); assert.ok(f.css());
+    assert.equal(f.requests[0].url, 'https://courses.university.example/learn/api/v1/users/me');
+});
+
+test('Ultra navigation markup is detected without a product name or a known domain', async () => {
+    const f = fixture({ customprimary: '#123456' }, { host: 'study.university.example', blackboard: false });
+    const navigation = f.addPanel('transparent'); navigation.setAttribute('data-analytics-id', 'base.navigation.drawer');
+    await f.run(); assert.match(f.css(), /--bbl-primary: #123456/);
+});
+
+test('Ultra routes require Blackboard component markup before activating', async () => {
+    const f = fixture({ colorscheme: 'dark' }, { host: 'portal.example', blackboard: false, pathname: '/ultra/courses' });
+    await f.run(); assert.equal(f.css(), ''); assert.equal(f.storageReads.length, 0);
+    const translated = f.addPanel('transparent'); translated.setAttribute('bb-translate', '');
+    await f.mutations([{ type: 'childList', addedNodes: [translated] }]); assert.ok(f.css());
+});
+
+for (const assetPath of ['/webapps/blackboard/styles.css', '/webapps/bbng/scripts/main.js', '/javascript/blackboard.js?v=2', '/javascript/blackboard/app.js']) {
+    test('Classic local assets detect Blackboard at ' + assetPath, async () => {
+        const f = fixture({ colorscheme: 'dark' }, { host: 'lms.example.edu', blackboard: false, pathname: '/webapps/portal/execute/tabs/tabAction' });
+        const asset = new Element(assetPath.endsWith('.css') ? 'link' : 'script');
+        asset.setAttribute(asset.tagName === 'link' ? 'href' : 'src', assetPath);
+        if (asset.tagName === 'link') asset.setAttribute('rel', 'stylesheet');
+        f.doc.body.appendChild(asset); await f.run(); assert.ok(f.css());
+    });
+}
+
+test('HTTP Blackboard installations are detected with same-origin API requests', async () => {
+    const f = fixture({ colorscheme: 'dark' }, { host: 'learn.example.edu', protocol: 'http:', blackboard: true });
+    await f.run(); assert.ok(f.css()); assert.match(f.requests[0].url, /^http:\/\/learn\.example\.edu\//);
+});
+
+test('ordinary pages mentioning Blackboard do not receive styles, storage reads, or API calls', async () => {
+    const f = fixture({ colorscheme: 'dark', customfont: 'Open Sans' }, { host: 'help.blackboard.com', blackboard: false });
+    f.doc.title = 'Blackboard Learn guide';
+    const link = f.addPanel('white', 'a'); link.setAttribute('href', 'https://college.blackboard.com/ultra');
+    link.textContent = 'Open Blackboard Learn';
+    const external = f.addPanel('transparent', 'script'); external.setAttribute('src', 'https://college.blackboard.com/javascript/blackboard.js');
+    await f.run(); await f.change({ colorscheme: 'dark' });
+    assert.equal(f.head.children.length, 0); assert.equal(f.storageReads.length, 0);
+    assert.equal(f.listeners.length, 0); assert.equal(f.requests.length, 0);
+});
+
+test('late generator metadata activates once and loads the latest saved preferences', async () => {
+    const f = fixture({ colorscheme: 'default' }, { host: 'courses.example.edu', blackboard: false });
+    await f.run(); await f.change({ colorscheme: 'dark' }); assert.equal(f.storageReads.length, 0);
+    const meta = new Element('meta'); meta.setAttribute('name', 'GeNeRaToR'); meta.setAttribute('content', 'Blackboard Learn 3900');
+    f.doc.body.appendChild(meta);
+    await f.mutations([{ type: 'childList', addedNodes: [meta] }]);
+    assert.ok(f.css()); assert.equal(f.requests.length, 1); assert.equal(f.storageReads.length, 1);
+    assert.equal(f.observers[0].connected, false);
+    await f.mutations([{ type: 'attributes', target: meta }]); assert.equal(f.requests.length, 1);
+});
+
+test('updated metadata is recognized after the initial document load', async () => {
+    const f = fixture({ colorscheme: 'dark' }, { host: 'learn.example.edu', blackboard: false });
+    const meta = new Element('meta'); meta.setAttribute('name', 'generator'); meta.setAttribute('content', '');
+    f.doc.body.appendChild(meta); await f.run(); assert.equal(f.css(), '');
+    meta.setAttribute('content', 'Blackboard');
+    await f.mutations([{ type: 'attributes', target: meta }]); assert.ok(f.css());
+});
+
+test('same-origin course frames inherit detection without duplicating metadata requests', async () => {
+    const parent = fixture({}, { host: 'courses.example.edu', blackboard: true });
+    const f = fixture({ colorscheme: 'dark' }, { host: 'courses.example.edu', blackboard: false, frame: true,
+        parent: { document: parent.doc, location: parent.window.location } });
+    await f.run(); assert.ok(f.css()); assert.equal(f.requests.length, 0);
+});
+
+test('cross-origin frames do not inherit Blackboard detection', async () => {
+    const parent = fixture({}, { host: 'courses.example.edu', blackboard: true });
+    const f = fixture({ colorscheme: 'dark' }, { host: 'external.example', blackboard: false, frame: true,
+        parent: { document: parent.doc, location: parent.window.location } });
+    await f.run(); assert.equal(f.css(), ''); assert.equal(f.storageReads.length, 0);
+});
+
+test('PDF frames remain excluded even when their parent is detected as Blackboard', async () => {
+    const parent = fixture({}, { host: 'courses.example.edu', blackboard: true });
+    const f = fixture({ colorscheme: 'dark' }, { host: 'courses.example.edu', blackboard: false, frame: true,
+        pathname: '/files/lecture.pdf', parent: { document: parent.doc, location: parent.window.location } });
+    await f.run(); assert.equal(f.css(), ''); assert.equal(f.storageReads.length, 0);
+    assert.equal(f.observers.length, 0);
+});
 test('sidebar matching updates course card backgrounds', async () => {
     const f = fixture({ colorscheme: 'dark', customsidebar: '#135790' }); await f.run();
     assert.match(f.css(), /\.element-card \.element-details.summary[^{}]*\{ background-color: #1f1f1f/);
@@ -227,7 +338,7 @@ test('course requests use the current university and encode identifiers', async 
     } }) });
     await f.run(); await flush();
     assert.equal(f.requests.length, 3);
-    assert.ok(f.requests.every(request => request.url.startsWith('https://vle.iau.edu.sa/')));
+    assert.ok(f.requests.every(request => request.url.startsWith('https://learn.example.edu/')));
     assert.match(f.requests[1].url, /name%2Fwith%20space/);
     assert.equal(f.storage.courseshortnames[0], 'CS101');
     assert.ok(f.requests.every(request => request.options.credentials === 'same-origin'));
@@ -274,10 +385,10 @@ test('background upgrade preserves saved settings and fills missing defaults', a
     await installed(); assert.equal(f.storage.customprimary, '#123456'); assert.equal(f.storage.colorscheme, 'dark');
     assert.equal(f.storage.customsecondary, 'default'); assert.equal(f.storage.courseImageMap.length, 0);
 });
-test('manifest loads local scripts, both IAU and cloud sites, and course frames', () => {
+test('manifest enables automatic detection on HTTP and HTTPS sites and course frames', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
     assert.equal(manifest.manifest_version, 3); assert.equal(manifest.content_scripts[0].all_frames, true);
-    assert.ok(manifest.content_scripts[0].matches.includes('https://vle.iau.edu.sa/*'));
+    assert.deepEqual(manifest.content_scripts[0].matches, ['http://*/*', 'https://*/*']);
     assert.equal(manifest.update_url, undefined); assert.equal(manifest.key, undefined);
     for (const item of [manifest.action.default_popup, manifest.options_page, manifest.background.service_worker,
         ...manifest.content_scripts[0].js, ...Object.values(manifest.icons)]) assert.ok(fs.existsSync(path.join(root, item)), item);

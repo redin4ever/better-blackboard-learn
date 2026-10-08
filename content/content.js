@@ -18,8 +18,58 @@ const scanRoots = new Set();
 const gradeTextStyles = new Map();
 let gradeAccent = '#e7e7e7';
 const themeKeys = new Set(Object.keys(defaults));
-const knownBlackboard = window.location.hostname === 'vle.iau.edu.sa' ||
-    window.location.hostname.endsWith('.blackboard.com');
+let detectionObserver = null;
+let detectionQueued = false;
+
+// Match product-specific markup and locally loaded assets, not page titles,
+// mentions of Blackboard, or links to another university's learning system.
+function isBlackboardPage(doc = document, location = window.location) {
+    if (doc.querySelector('bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"]')) return true;
+    for (const meta of doc.querySelectorAll('meta[name="generator" i]')) {
+        if (/^blackboard(?:\s+learn)?(?:\s|$)/i.test((meta.getAttribute('content') || '').trim())) return true;
+    }
+    if (/^\/ultra(?:\/|$)/i.test(location.pathname || '') &&
+        doc.querySelector('[bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema')) return true;
+    for (const asset of doc.querySelectorAll('script[src], link[rel="stylesheet"][href]')) {
+        try {
+            const url = new URL(asset.getAttribute('src') || asset.getAttribute('href'), location.origin + (location.pathname || '/'));
+            if (url.origin === location.origin && /^\/(?:webapps\/(?:blackboard|bbng|bbgs)\/|javascript\/(?:blackboard(?:\/|\.js$)|bbcommon\/))/i.test(url.pathname)) return true;
+        } catch { /* An invalid asset URL is not a Blackboard signature. */ }
+    }
+    return false;
+}
+
+function detectedBlackboard() {
+    if (isBlackboardPage()) return true;
+    // Classic course frames can inherit detection only from a same-origin
+    // Blackboard parent. Cross-origin embeds and PDF viewers stay excluded.
+    try {
+        return window.parent !== window && window.parent.location.origin === domain &&
+            isBlackboardPage(window.parent.document, window.parent.location);
+    } catch { return false; }
+}
+
+const detectionMarkers = 'meta, script[src], link[href], bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"], [bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema';
+
+function watchForBlackboard() {
+    if (started || isPDFDocument()) return;
+    startExtension();
+    if (started || detectionObserver || !document.documentElement) return;
+    detectionObserver = new MutationObserver(records => {
+        const relevant = records.some(record => record.type === 'attributes' ||
+            [...record.addedNodes].some(node => node.nodeType === 1 &&
+                (node.matches(detectionMarkers) || node.querySelector(detectionMarkers))));
+        if (!relevant || detectionQueued) return;
+        detectionQueued = true;
+        requestAnimationFrame(() => {
+            detectionQueued = false;
+            if (isPDFDocument()) { detectionObserver?.disconnect(); detectionObserver = null; return; }
+            startExtension();
+        });
+    });
+    detectionObserver.observe(document.documentElement, { childList: true, subtree: true,
+        attributes: true, attributeFilter: ['src', 'href', 'name', 'content', 'data-analytics-id', 'bb-translate', 'bb-click-to-invoke-child'] });
+}
 
 const pdfRoots = '.pdfViewer, .pdf-viewer, pdf-viewer, #viewerContainer, .textLayer, .annotationLayer, .canvasWrapper, .react-pdf__Document, .react-pdf__Page, .rpv-core__viewer, .document-viewer, .documentViewer, .file-preview, [data-testid="pdf-viewer"], [data-test-id="pdf-viewer"], [data-analytics-id*="pdf-viewer" i], [class*="pdf-viewer" i], [class*="pdfviewer" i]';
 const outsidePDF = `:not(:where(${pdfRoots}, :is(${pdfRoots}) *))`;
@@ -446,14 +496,14 @@ function renderOptions() {
     renderCourses();
 }
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
+function onPreferencesChanged(changes, areaName) {
     if (areaName !== 'sync') return;
     const patch = Object.fromEntries(Object.entries(changes).map(([key, change]) =>
         [key, change.newValue === undefined ? defaults[key] : change.newValue]));
     options = { ...options, ...patch };
     if (!loaded) earlyChanges = { ...earlyChanges, ...patch };
     if (started && loaded && Object.keys(changes).some(key => themeKeys.has(key))) renderOptions();
-});
+}
 
 async function readJSON(url) {
     const response = await fetch(url, { credentials: 'same-origin', signal: AbortSignal.timeout(10000) });
@@ -481,8 +531,11 @@ async function loadCourseList() {
 }
 
 function startExtension() {
-    if (started || !knownBlackboard || isPDFDocument()) return;
+    if (started || isPDFDocument() || !detectedBlackboard()) return;
     started = true;
+    detectionObserver?.disconnect();
+    detectionObserver = null;
+    chrome.storage.onChanged.addListener(onPreferencesChanged);
     chrome.storage.sync.get(null, saved => {
         if (chrome.runtime.lastError) {
             console.warn('Better Blackboard: saved preferences could not be loaded.');
@@ -496,9 +549,9 @@ function startExtension() {
 }
 
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startExtension, { once: true });
+    document.addEventListener('DOMContentLoaded', watchForBlackboard, { once: true });
 } else {
-    startExtension();
+    watchForBlackboard();
 }
 
 function legacyThemeCSS(primaryColor, secondaryColor, sidebarColor, classname) {

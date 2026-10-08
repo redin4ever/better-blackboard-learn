@@ -1,6 +1,6 @@
 # Better Blackboard Learn (Fixed)
 
-A repaired Chrome extension for dark mode and custom themes on IAU Blackboard (`vle.iau.edu.sa`) and Blackboard cloud sites (`*.blackboard.com`).
+A repaired Chrome extension for dark mode and custom themes on Blackboard Learn, including universities with their own domain names.
 
 ## Features
 
@@ -9,6 +9,13 @@ A repaired Chrome extension for dark mode and custom themes on IAU Blackboard (`
 - Theme updates for dynamically loaded course pages and frames.
 - Readable grade pills, including Arabic scores and ungraded placeholders.
 - PDF viewers excluded from theme changes.
+- Automatic detection of Blackboard Ultra and Classic pages on custom domains.
+
+## Automatic detection
+
+The extension recognizes Blackboard generator metadata, Ultra navigation and component markup, and same-origin Classic scripts or stylesheets. It also checks for markers added after the page loads. A page title, a mention of Blackboard, or an external Blackboard link does not activate theming.
+
+Same-origin course frames can inherit detection from their Blackboard parent. PDF viewers remain excluded. Heavily customized installations that remove all recognized markers may need additional detection rules.
 
 ## Install
 
@@ -19,7 +26,7 @@ A repaired Chrome extension for dark mode and custom themes on IAU Blackboard (`
    ```
 
 2. Open `chrome://extensions` and turn off the original Better Blackboard Learn extension if it is installed.
-3. Enable **Developer mode**, click **Load unpacked**, and select the folder containing `manifest.json`.
+3. Enable **Developer mode**, click **Load unpacked**, and select the folder containing `manifest.json`. Allow site access on all sites so detection can work on custom university domains.
 4. Refresh Blackboard, open the extension, and select **Dark Mode** or your preferred theme.
 
 Keep the folder in place while using the extension. After updating its files, click **Reload** on `chrome://extensions` and refresh Blackboard. This copy has separate settings from the original extension and does not receive Chrome Web Store updates.
@@ -32,11 +39,13 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 52 automated checks use simulated DOM and Chrome storage fixtures. They cover theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering on IAU Blackboard has not been verified through browser automation.
+The 66 automated checks use simulated DOM and Chrome storage fixtures. They cover custom-domain detection, late-loading markers, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 
-Uses Chrome's `storage` permission for preferences and content scripts on the supported Blackboard domains. Course metadata is requested from the current Blackboard site. See [repair notes](REPAIR-NOTES.md) for the changes.
+Uses Chrome's `storage` permission for preferences. Content scripts match HTTP and HTTPS pages so Blackboard can be detected on any domain. Chrome documents these patterns in its [match pattern reference](https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns).
+
+Unrecognized pages receive no theme styles, preference reads, or Blackboard API requests. Once Blackboard is detected, optional course metadata is requested from the current site's origin. See [repair notes](REPAIR-NOTES.md) for the changes.
 
 ## Contact
 
