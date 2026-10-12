@@ -12,6 +12,7 @@ A repaired Chrome extension for dark mode and custom themes on Blackboard Learn,
 - Separate website and embedded PDF scrollbar controls: keep the default, follow the theme, choose custom colors and width, or hide the bar.
 - PDF viewers excluded from theme changes.
 - Automatic detection of Blackboard Ultra and Classic pages on custom domains.
+- A Participants button in Ultra course navigation, with a searchable roster styled like Blackboard's Groups table.
 
 ## Automatic detection
 
@@ -43,6 +44,16 @@ Each target's preference is saved separately and applies to detected Blackboard 
 
 Hidden mode keeps wheel, touch, and keyboard scrolling available. **Reset** restores only the selected target's scrollbar. PDF scrollbar customization is off by default and never recolors PDF content. Chrome's built-in PDF viewer cannot be styled by this extension. Styling uses Chrome's [scrollbar properties and pseudo-elements](https://developer.chrome.com/docs/css-ui/scrollbar-styling); website rules exclude PDF viewer elements.
 
+## Course participants
+
+Select **Participants**, immediately before Gradebook in an Ultra course's navigation. The button follows the neighbouring tab's spacing, typography, and title wrappers, including after navigation redraws and window resizing.
+
+The roster shows Name, Role, Username (`userName`), and User ID (`user.id`, with `userId` as a fallback). Search all four columns, filter by role, or select Name to reverse the sort. Results are displayed in pages of 50 rows. Arabic pages use translated controls and isolate names and identifiers for bidirectional text.
+
+The extension requests `/learn/api/v1/courses/{courseId}/memberships?expand=user,courseRole,user.hasEmailAddress` only when the button is selected. It derives the course and origin from the current course navigation, uses the signed-in Blackboard session, and follows same-origin roster pagination. Blackboard must allow the account to view participants. An explicit `viewUserName: false` response hides usernames. Session and permission errors show a message and a Retry button.
+
+Roster data stays in memory while the panel is open and is cleared on closing or switching courses. It is not saved in Chrome storage or sent to another service. Embedded frames do not receive the Participants feature.
+
 ## Validation
 
 Requires Node.js 18 or later; no dependencies are needed.
@@ -51,7 +62,7 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 104 automated checks use simulated DOM and Chrome storage fixtures. They cover the supplied Blackboard PDF toolbar and its scroll wrapper, associated viewer frames, separate website/PDF scrollbar settings and persistence, quiet color defaults and saved custom colors, refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
+The 129 automated checks use simulated DOM, API responses, and Chrome storage fixtures. They cover Participants navigation spacing, redraws, resizing, requested user fields, search and sorting, pagination, permissions, cancellation, safe text rendering and Arabic controls, alongside the supplied Blackboard PDF toolbar and its scroll wrapper, associated viewer frames, separate scrollbar preferences, theme recovery, automatic detection, PDF exclusions and grade contrast. All roster test data is synthetic. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 

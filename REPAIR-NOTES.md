@@ -1,4 +1,4 @@
-# Local repair, version 1.2.20
+# Local repair, version 1.2.21
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -6,6 +6,17 @@ The upstream MIT license and original assets are retained.
 Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
+
+- Add a Participants button before Gradebook in Ultra course navigation. Copy
+  the native tab's computed padding, font, margins and title wrapper classes;
+  refresh those values after window resizing and native navigation redraws.
+- Fetch the current course's expanded memberships on demand, using its current
+  origin and signed-in session. Follow validated pagination, deduplicate users,
+  respect denied username visibility and report session/permission errors.
+- Display a Groups-style table with Name, Role, Username and User ID. Add
+  search, role filtering, name sorting, 50-row display pages and Arabic controls.
+  Render returned text safely, accept only same-origin avatar URLs, abort stale
+  requests on close/course changes, and keep roster data out of storage.
 
 - Recognize the supplied toolbar-start-container and pageNumber controls, mark
   their enclosing viewer/scroll container and detect late viewer rendering.
@@ -109,7 +120,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-104 automated checks passed with a simulated DOM and Chrome storage. They cover
+129 automated checks passed with a simulated DOM, synthetic roster responses and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.
@@ -126,7 +137,7 @@ The additional grade-ellipsis fixture reproduces the supplied wrapper, sr-only
 span and bdi markup with black text-fill and a brightness-zero filter.
 Filled-pill fixtures cover the supplied Arabic score markup on green, an outlined
 dark pill and a pill whose background changes during a redraw.
-All three JavaScript files passed syntax checks. Manifest references exist.
+Extension JavaScript files passed syntax checks. Manifest references exist.
 
 Detection checks cover custom university domains, Ultra markup, Classic assets,
 HTTP installations, late or updated metadata and same-origin frames. They also

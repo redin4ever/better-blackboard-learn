@@ -1,0 +1,44 @@
+#bbl-participants-nav button { border: 0; border-radius: 0; cursor: pointer; font: inherit; color: var(--bbl-accent, inherit); background: var(--bbl-primary, transparent) !important; }
+#bbl-participants-nav button:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+#bbl-participants-dialog {
+  background: var(--bbl-primary, var(--bbl-roster-native-bg, #fff));
+  color: var(--bbl-accent, var(--bbl-roster-native-text, #202124));
+  width: min(1100px, calc(100vw - 48px)); max-height: calc(100vh - 64px);
+  box-sizing: border-box; padding: 24px; margin: auto; border: 1px solid #888;
+  border-radius: 4px; box-shadow: 0 8px 32px #0005; font: inherit;
+}
+#bbl-participants-dialog::backdrop { background: #0008; }
+#bbl-participants-dialog .bbl-roster-header { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+#bbl-participants-dialog h2 { margin: 0; font-size: 24px; font-weight: 600; color: inherit !important; }
+#bbl-participants-dialog .bbl-roster-description { margin: 8px 0 0; font-size: 14px; }
+#bbl-participants-dialog .bbl-roster-controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin: 24px 0 16px; }
+#bbl-participants-dialog label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+#bbl-participants-dialog .bbl-roster-search-label { flex: 1 1 240px; }
+#bbl-participants-dialog input, #bbl-participants-dialog select {
+  background: inherit; color: inherit; padding: 10px 12px; border: 1px solid #888; border-radius: 2px; font: inherit; min-width: 0;
+}
+#bbl-participants-dialog input::placeholder { color: inherit; opacity: .7; }
+#bbl-participants-dialog select option { background: var(--bbl-primary, var(--bbl-roster-native-bg, #fff)); color: var(--bbl-accent, var(--bbl-roster-native-text, #202124)); }
+#bbl-participants-dialog button {
+  color: inherit; background: transparent; border: 1px solid #888; border-radius: 2px; padding: 8px 12px; font: inherit; cursor: pointer;
+}
+#bbl-participants-dialog button:disabled { opacity: .5; cursor: default; }
+#bbl-participants-dialog :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+#bbl-participants-dialog .bbl-roster-status { margin: 16px 0; min-height: 20px; }
+#bbl-participants-dialog .bbl-roster-table-wrap { overflow-x: auto; }
+#bbl-participants-dialog table { width: 100%; border-collapse: collapse; text-align: start; font-size: 14px; background: transparent; }
+#bbl-participants-dialog th, #bbl-participants-dialog td { padding: 16px 12px; border-bottom: 1px solid #bbb; text-align: start; color: inherit; background: transparent; }
+#bbl-participants-dialog th { font-weight: 600; border-bottom-width: 2px; white-space: nowrap; }
+#bbl-participants-dialog .bbl-roster-sort { display: inline-flex; align-items: center; gap: 8px; border: 0; padding: 0; font-weight: 600; }
+#bbl-participants-dialog .bbl-roster-person { display: flex; gap: 14px; align-items: center; min-height: 32px; min-width: 220px; }
+#bbl-participants-dialog .bbl-roster-avatar { flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #666; color: #fff !important; }
+#bbl-participants-dialog .bbl-roster-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#bbl-participants-dialog .bbl-roster-name { font-weight: 600; }
+#bbl-participants-dialog .bbl-roster-id { white-space: nowrap; font-variant-numeric: tabular-nums; }
+#bbl-participants-dialog .bbl-roster-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; font-size: 14px; }
+#bbl-participants-dialog .bbl-roster-pages { display: flex; gap: 8px; }
+#bbl-participants-dialog [hidden] { display: none !important; }
+@media (max-width: 600px) {
+  #bbl-participants-dialog { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding: 16px; }
+  #bbl-participants-dialog .bbl-roster-controls { gap: 12px; }
+}
