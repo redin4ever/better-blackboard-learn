@@ -4,7 +4,8 @@ const domain = window.location.origin;
 const defaults = {
     colorscheme: 'default', theme: 'default', customprimary: 'default',
     customsecondary: 'default', customsidebar: 'default', customfont: 'default',
-    matchSidebarToCourseCards: false, courseImageMap: [], courseNameMap: []
+    matchSidebarToCourseCards: false, courseImageMap: [], courseNameMap: [],
+    scrollbarMode: 'default', scrollbarWidth: 'thin', scrollbarThumb: '#808080', scrollbarTrack: '#1f1f1f'
 };
 let options = { ...defaults };
 let started = false;
@@ -119,7 +120,7 @@ function isPDFDocument() {
 
 function clearDocumentStyles() {
     updateSurfaceFix(false);
-    for (const id of ['bbl-theme', 'bbl-font', 'bbl-banners', 'bbl-names']) setSheet(id, '');
+    for (const id of ['bbl-theme', 'bbl-font', 'bbl-banners', 'bbl-names', 'bbl-scrollbar']) setSheet(id, '');
 }
 
 function splitSelectors(value) {
@@ -394,6 +395,45 @@ document.addEventListener('load', event => {
     if (event.target?.tagName === 'LINK') queueSurfaceScan(document.body);
 }, true);
 
+function themePalette() {
+    const preset = options.theme && typeof options.theme === 'object' ? options.theme : {};
+    const dark = options.colorscheme === 'dark';
+    return {
+        primary: color(options.customprimary, color(preset.primary, dark ? '#1f1f1f' : '#ffffff')),
+        accent: color(options.customsecondary, color(preset.accent, dark ? '#e7e7e7' : '#222222')),
+        sidebar: color(options.customsidebar, color(preset.sidebar, dark ? '#161515' : '#102d70'))
+    };
+}
+
+function renderScrollbar() {
+    const mode = options.scrollbarMode;
+    if (!['theme', 'custom', 'hidden'].includes(mode)) { setSheet('bbl-scrollbar', ''); return; }
+    if (mode === 'hidden') {
+        setSheet('bbl-scrollbar', scopeThemeCSS(`
+            * { scrollbar-width: none !important; }
+            *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+        `));
+        return;
+    }
+    const palette = themePalette();
+    const thumb = mode === 'theme' ? palette.accent : color(options.scrollbarThumb, defaults.scrollbarThumb);
+    const track = mode === 'theme' ? palette.primary : color(options.scrollbarTrack, defaults.scrollbarTrack);
+    const width = options.scrollbarWidth === 'normal' ? '12px' : '8px';
+    // Use scrollbar pseudo-elements so colors are not inherited by PDF roots.
+    // Keep overflow unchanged: wheel, touch, keyboard and horizontal scrolling
+    // continue working even when the visual scrollbar is hidden.
+    setSheet('bbl-scrollbar', scopeThemeCSS(`
+        * { scrollbar-width: auto !important; }
+        *::-webkit-scrollbar { width: ${width} !important; height: ${width} !important; }
+        *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background-color: ${track} !important; }
+        *::-webkit-scrollbar-thumb {
+            background-color: ${thumb} !important;
+            border: 2px solid ${track} !important; border-radius: 999px !important;
+        }
+        *::-webkit-scrollbar-button { display: none !important; }
+    `));
+}
+
 function renderTheme() {
     const preset = options.theme && typeof options.theme === 'object' ? options.theme : {};
     const dark = options.colorscheme === 'dark';
@@ -405,10 +445,8 @@ function renderTheme() {
         return;
     }
     // One sheet gives dark mode, presets and custom overrides a deterministic order.
-    const primary = color(options.customprimary, color(preset.primary, dark ? '#1f1f1f' : '#ffffff'));
-    const accent = color(options.customsecondary, color(preset.accent, dark ? '#e7e7e7' : '#222222'));
+    const { primary, accent, sidebar } = themePalette();
     gradeAccent = accent;
-    const sidebar = color(options.customsidebar, color(preset.sidebar, dark ? '#161515' : '#102d70'));
     const matchedCard = options.matchSidebarToCourseCards ? sidebar : primary;
     const css = legacyThemeCSS(primary, accent, sidebar, 'theme') + `
       :root { --bbl-primary: ${primary}; --bbl-accent: ${accent}; --bbl-sidebar: ${sidebar}; }
@@ -596,6 +634,7 @@ function renderOptions() {
     renderTheme();
     renderFont();
     renderCourses();
+    renderScrollbar();
 }
 
 function onPreferencesChanged(changes, areaName) {

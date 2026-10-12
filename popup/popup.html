@@ -38,6 +38,9 @@
               Custom<br>Fonts
             </button>
           </div>
+          <div class="scrollbar-setting">
+            <button id="scrollbar-button">Scrollbars</button>
+          </div>
           <div id="report-issue">
             <button id="report-issue-button">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><defs><style>.cls-1{fill:none;stroke:white;stroke-miterlimit:10;stroke-width:1.91px;}</style></defs><line class="cls-1" x1="12" y1="5.3" x2="12" y2="11.98"/><path class="cls-1" d="M1.5,5.3v9.54a3.82,3.82,0,0,0,3.82,3.82H7.23v2.86L13,18.66h5.73a3.82,3.82,0,0,0,3.82-3.82V5.3a3.82,3.82,0,0,0-3.82-3.82H5.32A3.82,3.82,0,0,0,1.5,5.3Z"/><line class="cls-1" x1="11.05" y1="13.89" x2="12.95" y2="13.89"/></svg>
@@ -46,7 +49,35 @@
           </div>
         </div>
     
-        <div id="custom-theme-options">
+        <div id="scrollbar-options">
+  <h3>Website scrollbar</h3>
+  <label for="scrollbar-mode">Appearance</label>
+  <select id="scrollbar-mode">
+    <option value="default">Default website scrollbar</option>
+    <option value="theme">Follow theme</option>
+    <option value="custom">Custom colors</option>
+    <option value="hidden">Hidden</option>
+  </select>
+  <div id="scrollbar-appearance" hidden>
+    <label for="scrollbar-width">Width</label>
+    <select id="scrollbar-width">
+      <option value="thin">Thin</option>
+      <option value="normal">Normal</option>
+    </select>
+  </div>
+  <div id="scrollbar-colors" hidden>
+    <label for="scrollbar-thumb">Thumb color <input id="scrollbar-thumb" type="color" value="#808080"></label>
+    <label for="scrollbar-track">Track color <input id="scrollbar-track" type="color" value="#1f1f1f"></label>
+  </div>
+  <p>Changes the Blackboard page scrollbar. Hidden keeps wheel, touch, and keyboard scrolling available. PDFs keep their own scrollbars.</p>
+  <div class="action-buttons">
+    <button id="reset-scrollbar" class="remove-setting-button">Reset</button>
+    <button id="save-scrollbar" class="save-setting-button">Save</button>
+  </div>
+  <button id="cancel-scrollbar">Back</button>
+</div>
+
+<div id="custom-theme-options">
           <h3 id="custom-theme-header">Create Theme</h3>
           <div class="palette-selection primary-palette">
             <h2>Primary Color</h2>

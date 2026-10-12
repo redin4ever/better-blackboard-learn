@@ -554,3 +554,27 @@ option {
 .email-link:hover .email-text {
   text-decoration: underline;
 }
+
+#report-issue-button { left: 29%; width: 43%; padding: 6px; }
+#report-issue-button svg { display: none; }
+#scrollbar-button {
+  position: absolute; top: 92%; left: 71%; transform: translate(-50%, -50%);
+  height: 45px; width: 43%; padding: 6px;
+}
+#scrollbar-options {
+  display: none; flex-direction: column; gap: 8px;
+  padding: 8px; color: white; box-sizing: border-box;
+  max-height: 370px; overflow-y: auto;
+}
+#scrollbar-options h3 { margin: 2px 0 8px; text-align: center; font-size: 22px; }
+#scrollbar-options select {
+  width: 100%; padding: 8px; border: 1px solid #777;
+  border-radius: 6px; background: #222; color: white;
+}
+#scrollbar-appearance, #scrollbar-colors { display: flex; flex-direction: column; gap: 8px; }
+#scrollbar-options [hidden] { display: none; }
+#scrollbar-colors label { display: flex; justify-content: space-between; align-items: center; }
+#scrollbar-colors input { width: 48px; height: 28px; padding: 0; }
+#scrollbar-options p { font-size: 12px; line-height: 1.4; margin: 2px 0; color: #ddd; }
+#scrollbar-options .action-buttons { margin: 2px 0; }
+#scrollbar-options :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

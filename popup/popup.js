@@ -450,3 +450,48 @@ function updateColor(input) {
   var colorTextId = input.id.replace("-input", "-text");
   document.getElementById(colorTextId).value = color;
 }
+
+// Blackboard website scrollbar preferences.
+const scrollbarDefaults = { scrollbarMode: 'default', scrollbarWidth: 'thin', scrollbarThumb: '#808080', scrollbarTrack: '#1f1f1f' };
+const scrollbarPanel = document.getElementById('scrollbar-options');
+const scrollbarMode = document.getElementById('scrollbar-mode');
+const scrollbarWidth = document.getElementById('scrollbar-width');
+const scrollbarThumb = document.getElementById('scrollbar-thumb');
+const scrollbarTrack = document.getElementById('scrollbar-track');
+
+function showScrollbarControls() {
+  document.getElementById('scrollbar-appearance').hidden = !['theme', 'custom'].includes(scrollbarMode.value);
+  document.getElementById('scrollbar-colors').hidden = scrollbarMode.value !== 'custom';
+}
+
+function fillScrollbarControls(saved) {
+  scrollbarMode.value = ['default', 'theme', 'custom', 'hidden'].includes(saved.scrollbarMode) ? saved.scrollbarMode : 'default';
+  scrollbarWidth.value = saved.scrollbarWidth === 'normal' ? 'normal' : 'thin';
+  scrollbarThumb.value = /^#[0-9a-f]{6}$/i.test(saved.scrollbarThumb) ? saved.scrollbarThumb : scrollbarDefaults.scrollbarThumb;
+  scrollbarTrack.value = /^#[0-9a-f]{6}$/i.test(saved.scrollbarTrack) ? saved.scrollbarTrack : scrollbarDefaults.scrollbarTrack;
+  showScrollbarControls();
+}
+
+function closeScrollbarOptions() {
+  scrollbarPanel.style.display = 'none';
+  title.style.display = 'block';
+  mainoptions.style.display = 'block';
+}
+
+document.getElementById('scrollbar-button').onclick = function() {
+  title.style.display = 'none';
+  mainoptions.style.display = 'none';
+  scrollbarPanel.style.display = 'flex';
+  chrome.storage.sync.get(Object.keys(scrollbarDefaults), saved => { fillScrollbarControls(saved); });
+};
+scrollbarMode.addEventListener('change', showScrollbarControls);
+document.getElementById('save-scrollbar').onclick = function() {
+  chrome.storage.sync.set({ scrollbarMode: scrollbarMode.value, scrollbarWidth: scrollbarWidth.value,
+    scrollbarThumb: scrollbarThumb.value, scrollbarTrack: scrollbarTrack.value });
+  closeScrollbarOptions();
+};
+document.getElementById('reset-scrollbar').onclick = function() {
+  chrome.storage.sync.set(scrollbarDefaults);
+  closeScrollbarOptions();
+};
+document.getElementById('cancel-scrollbar').onclick = closeScrollbarOptions;

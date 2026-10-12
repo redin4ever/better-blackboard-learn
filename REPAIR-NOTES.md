@@ -1,4 +1,4 @@
-# Local repair, version 1.2.16
+# Local repair, version 1.2.17
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -6,6 +6,15 @@ The upstream MIT license and original assets are retained.
 Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
+
+- Add a Website scrollbar settings panel with default, theme, custom and hidden
+  modes. Save the selection across refreshes; custom mode provides thumb and
+  track colors, and theme/custom modes provide thin or normal width.
+- Keep scrollbar settings independent from dark mode, update them on preference
+  changes, and recover removed scrollbar stylesheets during page hydration.
+  Default/reset removes the extension's scrollbar styling. Hiding the bar does
+  not change overflow or disable scrolling. PDF viewers remain excluded; colors
+  use pseudo-elements to avoid inheritance into inline viewers.
 
 - Apply the primary and accent colors to the supplied course-page-header and
   bb-course-navigation markup, including the header toolbar, Home and Courses
@@ -83,7 +92,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-78 automated checks passed with a simulated DOM and Chrome storage. They cover
+89 automated checks passed with a simulated DOM and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.
@@ -109,6 +118,9 @@ documents do not activate themes or cause preference reads and API requests.
 Refresh checks cover saved dark and custom themes without initial page markers,
 expired caches, storage failures, unrelated routes, bootstrap markup, removed
 stylesheets, replaced heads and bodies, disabled themes and late PDF viewers.
+Scrollbar checks cover defaults, hidden/custom/theme modes, live changes,
+invalid saved values, refresh persistence, stylesheet recovery, popup save/reset
+and cancel behavior, unrelated sites and PDF exclusions.
 
 No browser automation was used. Signed-in rendering across universities remains
 unverified; pages may contain additional selectors not covered by this repair.

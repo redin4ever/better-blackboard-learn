@@ -9,6 +9,7 @@ A repaired Chrome extension for dark mode and custom themes on Blackboard Learn,
 - Theme updates for dynamically loaded course pages and frames.
 - Readable grade pills, including Arabic scores and ungraded placeholders.
 - Course headers, navigation tabs, and active-tab borders follow the selected theme.
+- Website scrollbar controls: keep the default, follow the theme, choose custom colors and width, or hide the bar.
 - PDF viewers excluded from theme changes.
 - Automatic detection of Blackboard Ultra and Classic pages on custom domains.
 
@@ -34,6 +35,12 @@ Same-origin course frames can inherit detection from their Blackboard parent. PD
 
 Keep the folder in place while using the extension. After updating its files, click **Reload** on `chrome://extensions` and refresh Blackboard. This copy has separate settings from the original extension and does not receive Chrome Web Store updates.
 
+## Website scrollbar
+
+Open the extension and select **Scrollbars**. Choose **Default website scrollbar**, **Follow theme**, **Custom colors**, or **Hidden**, then click **Save**. Theme and custom modes offer thin or normal width. Custom mode also lets you choose the thumb and track colors.
+
+The preference is saved and applies to detected Blackboard pages and course frames. Hidden mode keeps wheel, touch, and keyboard scrolling available. **Reset** restores the website's scrollbar. PDF viewers keep their own scrollbars. Styling uses Chrome's [scrollbar pseudo-elements](https://developer.chrome.com/docs/css-ui/scrollbar-styling) with PDF exclusions.
+
 ## Validation
 
 Requires Node.js 18 or later; no dependencies are needed.
@@ -42,7 +49,7 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 78 automated checks use simulated DOM and Chrome storage fixtures. They cover refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
+The 89 automated checks use simulated DOM and Chrome storage fixtures. They cover scrollbar settings and persistence, refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 
