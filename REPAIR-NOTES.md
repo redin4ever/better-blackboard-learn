@@ -1,4 +1,4 @@
-# Local repair, version 1.2.19
+# Local repair, version 1.2.20
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -7,13 +7,21 @@ Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
 
+- Recognize the supplied toolbar-start-container and pageNumber controls, mark
+  their enclosing viewer/scroll container and detect late viewer rendering.
+  Remove those markings if the viewer disappears. Support recognized web PDF
+  frames on another origin when their referrer belongs to a recently detected
+  Blackboard site. Apply only PDF scrollbar settings in those viewer frames.
+- Override native scrollbar color and width rules within opted-in PDF viewers,
+  alongside Chrome scrollbar pseudo-elements, so viewer CSS cannot mask them.
+
 - Use quiet fallback colors when the popup has no saved palette. Restore valid
   custom color preferences before legacy picker values. Missing preferences no
   longer generate extension errors; genuine storage failures still report a warning.
 
 - Add a separate embedded PDF scrollbar target with its own saved mode, width
   and colors. Keep it off by default. Apply it only within inline viewer roots
-  or detected same-origin HTML viewer frames, without document theming, fonts
+  or associated HTML viewer frames, without document theming, fonts
   or course API requests. Native Chrome PDF documents remain untouched.
 
 - Add a Website scrollbar settings panel with default, theme, custom and hidden
@@ -101,7 +109,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-98 automated checks passed with a simulated DOM and Chrome storage. They cover
+104 automated checks passed with a simulated DOM and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.
@@ -135,6 +143,8 @@ HTML viewer frames, refresh through remembered parent detection, document color
 preservation, native PDF exclusions and separate popup save/reset behavior.
 Color-picker checks cover fresh storage without error messages and restoration
 of saved custom colors ahead of legacy values.
+The supplied-toolbar regressions cover missing viewer classes, scroll wrappers,
+late rendering, cross-origin viewer association and excluding ordinary embeds.
 
 No browser automation was used. Signed-in rendering across universities remains
 unverified; pages may contain additional selectors not covered by this repair.

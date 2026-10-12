@@ -39,7 +39,9 @@ Keep the folder in place while using the extension. After updating its files, cl
 
 Open the extension and select **Scrollbars**. Select **Website** or **Embedded PDF viewer**, then choose **Default scrollbar**, **Follow theme**, **Custom colors**, or **Hidden** and click **Save**. Theme and custom modes offer thin or normal width. Custom mode also lets you choose the thumb and track colors.
 
-Each target's preference is saved separately and applies to detected Blackboard pages and same-origin course/viewer frames. Hidden mode keeps wheel, touch, and keyboard scrolling available. **Reset** restores only the selected target's scrollbar. PDF scrollbar customization is off by default and never recolors PDF content. Chrome's built-in PDF viewer cannot be styled by this extension. Styling uses Chrome's [scrollbar pseudo-elements](https://developer.chrome.com/docs/css-ui/scrollbar-styling); website rules exclude PDF viewer elements.
+Each target's preference is saved separately and applies to detected Blackboard pages and viewer frames. The Blackboard web PDF toolbar is recognized through its page-number controls, and its scrolling container is identified even when its generated class names change. A recognized web PDF frame on another origin can inherit the association through a recently detected Blackboard referrer. Ordinary third-party frames remain untouched.
+
+Hidden mode keeps wheel, touch, and keyboard scrolling available. **Reset** restores only the selected target's scrollbar. PDF scrollbar customization is off by default and never recolors PDF content. Chrome's built-in PDF viewer cannot be styled by this extension. Styling uses Chrome's [scrollbar properties and pseudo-elements](https://developer.chrome.com/docs/css-ui/scrollbar-styling); website rules exclude PDF viewer elements.
 
 ## Validation
 
@@ -49,7 +51,7 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 98 automated checks use simulated DOM and Chrome storage fixtures. They cover separate website/PDF scrollbar settings and persistence, quiet color defaults and saved custom colors, refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
+The 104 automated checks use simulated DOM and Chrome storage fixtures. They cover the supplied Blackboard PDF toolbar and its scroll wrapper, associated viewer frames, separate website/PDF scrollbar settings and persistence, quiet color defaults and saved custom colors, refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 

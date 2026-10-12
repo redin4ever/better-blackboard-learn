@@ -11,7 +11,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 
 // A DOM and Chrome-storage fixture. No browser or user session is controlled.
 function detectionSelector(selector = '') {
-    return /bb-base-layout|^meta|^body#learn-oe-body|^script\[src\]|^\[bb-translate\]/.test(selector);
+    return /bb-base-layout|^meta|^body#learn-oe-body|^script\[src\]|^\[bb-translate\]|^\.toolbar|^#pageNumber|^canvas/.test(selector);
 }
 function matchesDetection(element, selector) {
     return selector.split(',').some(part => {
@@ -20,6 +20,7 @@ function matchesDetection(element, selector) {
         if (tag && element.tagName.toLowerCase() !== tag.toLowerCase()) return false;
         const id = /#([\w-]+)/.exec(rule)?.[1];
         if (id && element.id !== id) return false;
+        for (const match of rule.replace(/\[[^\]]*\]/g, '').matchAll(/\.([\w-]+)/g)) if (!element.classList.contains(match[1])) return false;
         for (const match of rule.matchAll(/\[([\w-]+)(?:="([^"]*)"( i)?)?\]/g)) {
             const value = element.getAttribute(match[1]);
             if (value === null) return false;
@@ -48,7 +49,7 @@ class Element {
     replaceChildren(...children) { this.children = []; children.forEach(child => this.appendChild(child)); }
     get options() { return this.children; }
     get parentElement() { return this.parentNode || null; }
-    querySelector(selector) { return detectionSelector(selector) ? this.querySelectorAll(selector)[0] || null : this.querySelectorAll().find(element => element.classList.contains('pdfViewer') || element.id === 'viewerContainer') || null; }
+    querySelector(selector) { return detectionSelector(selector) ? this.querySelectorAll(selector)[0] || null : this.querySelectorAll().find(element => element.classList.contains('pdfViewer') || element.id === 'viewerContainer' || element.getAttribute('data-bbl-pdf-root') === 'true') || null; }
     querySelectorAll(selector) { const all = this.children.flatMap(child => [child, ...child.querySelectorAll()]); return detectionSelector(selector) ? all.filter(element => matchesDetection(element, selector)) : all; }
     contains(other) { return this === other || this.querySelectorAll().includes(other); }
     matches(selector) { if (detectionSelector(selector)) return matchesDetection(this, selector); return ['grade-input-display', 'points-text', 'grade-pill', 'customGradePill', 'readonly-pill'].some(name => this.classList.contains(name)) || ['bb-grade-pill', 'bb-grading-schema'].includes(this.tagName); }
@@ -60,14 +61,14 @@ class Element {
             if (['base-grades', 'base-grades-wrapper', 'base-grades-term-wrapper', 'grades-list'].some(name => this.classList.contains(name))) return this;
             return this.parentNode?.closest(selector) || null;
         }
-        const pdfMatch = this.classList.contains('pdfViewer') || this.classList.contains('textLayer') || this.classList.contains('annotationLayer') || this.id === 'viewerContainer';
+        const pdfMatch = this.classList.contains('pdfViewer') || this.classList.contains('textLayer') || this.classList.contains('annotationLayer') || this.id === 'viewerContainer' || this.getAttribute('data-bbl-pdf-root') === 'true';
         if (selector.startsWith('.pdfViewer,')) return pdfMatch ? this : this.parentNode?.closest(selector) || null;
         const excluded = new Set(['script', 'style', 'link', 'img', 'picture', 'canvas', 'video', 'iframe', 'embed', 'object']);
         if (selector.includes(', svg,')) excluded.add('svg');
         if (excluded.has(this.tagName.toLowerCase()) || this.attributes.contenteditable === 'true' ||
             this.attributes['data-bbl-preserve'] ||
             this.classList.contains('course-banner') || this.classList.contains('vtbegenerated')) return this;
-        if (this.classList.contains('pdfViewer') || this.classList.contains('textLayer') || this.classList.contains('annotationLayer') || this.id === 'viewerContainer') return this;
+        if (pdfMatch) return this;
         return this.parentNode?.closest(selector) || null;
     }
     addEventListener(name, handler) { (this.listeners[name] ||= []).push(handler); }
@@ -86,6 +87,7 @@ function fixture(saved = {}, config = {}) {
     doc.documentElement.appendChild(body);
     doc.readyState = config.readyState || 'complete';
     doc.contentType = config.contentType || 'text/html';
+    doc.referrer = config.referrer || '';
     if (config.blackboard ?? (!config.host || config.host.endsWith('.blackboard.com'))) {
         const generator = new Element('meta');
         generator.setAttribute('name', 'generator'); generator.setAttribute('content', 'Blackboard Learn');
@@ -113,7 +115,7 @@ function fixture(saved = {}, config = {}) {
         local: {
             get(key, callback) { localReads.push(key); queueMicrotask(() => {
                 if (config.cacheFailure) chrome.runtime.lastError = { message: 'Local storage unavailable' };
-                callback(key in localStorage ? { [key]: localStorage[key] } : {});
+                callback(Object.fromEntries((Array.isArray(key) ? key : [key]).filter(item => item in localStorage).map(item => [item, localStorage[item]])));
                 chrome.runtime.lastError = null;
             }); },
             set(values, callback) { Object.assign(localStorage, values); if (callback) queueMicrotask(callback); }
@@ -639,7 +641,8 @@ test('PDF scrollbar theme colors change without recoloring the document', async 
     const css = f.doc.getElementById('bbl-pdf-scrollbar').textContent;
     assert.match(css, /background-color: #abcdef/); assert.match(css, /background-color: #123456/);
     assert.equal(viewer.getAttribute('data-bbl-surface'), null); assert.equal(viewer.computed.backgroundColor, 'white');
-    assert.doesNotMatch(css, /overflow\s*:|scrollbar-color\s*:/);
+    assert.doesNotMatch(css, /overflow\s*:/);
+    assert.match(css, /scrollbar-color: #abcdef #123456/);
 });
 
 test('native PDF documents remain untouched even with PDF scrollbar customization enabled', async () => {
@@ -666,6 +669,62 @@ test('resetting the PDF scrollbar keeps the website scrollbar preference', async
     f.elements.get('scrollbar-target').value = 'pdf'; f.elements.get('scrollbar-target').fire('change'); await flush();
     f.elements.get('reset-scrollbar').fire('click'); await flush();
     assert.equal(f.storage.pdfScrollbarMode, 'default'); assert.equal(f.storage.scrollbarMode, 'hidden');
+});
+
+function suppliedPDFToolbar(f, wrapper = f.addPanel('white')) {
+    const toolbar = new Element('div'); toolbar.classList.add('toolbar-start-container'); wrapper.appendChild(toolbar);
+    const pages = new Element('span'); pages.classList.add('toolbar-pageNumber'); toolbar.appendChild(pages);
+    const input = new Element('input'); input.id = 'pageNumber'; input.value = '1'; pages.appendChild(input);
+    const total = new Element('span'); total.classList.add('toolbar-pageNumber-of'); total.textContent = 'of 17'; pages.appendChild(total);
+    const canvas = new Element('canvas'); wrapper.appendChild(canvas);
+    return { wrapper, toolbar, canvas };
+}
+
+test('the supplied Blackboard PDF toolbar identifies its unlabelled viewer container', async () => {
+    const f = fixture({ colorscheme: 'dark', pdfScrollbarMode: 'custom', pdfScrollbarThumb: '#abcdef' });
+    const { wrapper } = suppliedPDFToolbar(f); await f.run();
+    assert.equal(wrapper.getAttribute('data-bbl-pdf-root'), 'true');
+    assert.equal(wrapper.getAttribute('data-bbl-surface'), null);
+    assert.match(f.doc.getElementById('bbl-pdf-scrollbar').textContent, /\[data-bbl-pdf-root="true"\]/);
+    assert.match(f.doc.getElementById('bbl-pdf-scrollbar').textContent, /background-color: #abcdef/);
+});
+
+test('the PDF scrollbar targets a scrolling wrapper above the supplied toolbar and pages', async () => {
+    const f = fixture({ pdfScrollbarMode: 'hidden' });
+    const scroll = f.addPanel('white'); scroll.computed.overflowY = 'auto'; scroll.scrollHeight = 800; scroll.clientHeight = 400;
+    const content = new Element('div'); scroll.appendChild(content); suppliedPDFToolbar(f, content); await f.run();
+    assert.equal(scroll.getAttribute('data-bbl-pdf-root'), 'true');
+    assert.match(f.doc.getElementById('bbl-pdf-scrollbar').textContent, /scrollbar-width: none/);
+});
+
+test('late PDF toolbar rendering is detected even when the website color theme is disabled', async () => {
+    const f = fixture({ pdfScrollbarMode: 'hidden' }); await f.run();
+    const { wrapper } = suppliedPDFToolbar(f);
+    await f.mutations([{ type: 'childList', addedNodes: [wrapper], target: f.doc.body }]);
+    assert.equal(wrapper.getAttribute('data-bbl-pdf-root'), 'true'); assert.equal(f.css(), '');
+    wrapper.remove(); await f.mutations([{ type: 'childList', addedNodes: [], removedNodes: [wrapper], target: f.doc.body }]);
+    assert.equal(wrapper.getAttribute('data-bbl-pdf-root'), null);
+});
+
+test('a web PDF renderer on another origin inherits only scrollbar preferences from a detected Blackboard referrer', async () => {
+    const parent = fixture({}, { host: 'courses.example.edu' , blackboard: true }); await parent.run();
+    const f = fixture({ colorscheme: 'dark', customfont: 'Open Sans', pdfScrollbarMode: 'custom', pdfScrollbarThumb: '#abcdef' },
+        { host: 'document-renderer.example', blackboard: false, frame: true, referrer: 'https://courses.example.edu/', localStorage: parent.localStorage });
+    suppliedPDFToolbar(f); await f.run();
+    assert.equal(f.head.children.length, 1); assert.ok(f.doc.getElementById('bbl-pdf-scrollbar'));
+    assert.equal(f.css(), ''); assert.equal(f.doc.getElementById('bbl-font'), null); assert.equal(f.requests.length, 0);
+});
+
+test('an ordinary cross-origin frame cannot inherit Blackboard styling through its referrer', async () => {
+    const parent = fixture({}, { host: 'courses.example.edu', blackboard: true }); await parent.run();
+    const f = fixture({ colorscheme: 'dark', pdfScrollbarMode: 'hidden' },
+        { host: 'unrelated-embed.example', blackboard: false, frame: true, referrer: 'https://courses.example.edu/', localStorage: parent.localStorage });
+    await f.run(); assert.equal(f.head.children.length, 0); assert.equal(f.storageReads.length, 0);
+});
+
+test('a PDF toolbar on a third-party site without a detected Blackboard referrer remains untouched', async () => {
+    const f = fixture({ pdfScrollbarMode: 'hidden' }, { host: 'other-viewer.example', blackboard: false, frame: true, referrer: 'https://unrelated.example/' });
+    suppliedPDFToolbar(f); await f.run(); assert.equal(f.head.children.length, 0); assert.equal(f.storageReads.length, 0);
 });
 test('manifest enables automatic detection on HTTP and HTTPS sites and course frames', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));

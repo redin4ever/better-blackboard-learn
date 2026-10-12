@@ -30,11 +30,15 @@ const detectionCacheKey = 'bbl-detected:' + domain;
 const detectionCacheAge = 30 * 24 * 60 * 60 * 1000;
 let detectionCacheRead = false;
 let rememberedPage = null;
+let rememberedPDFParent = false;
+
+function validDetectionEntry(entry) {
+    return entry && typeof entry.route === 'string' && Number.isFinite(entry.confirmedAt) &&
+        Date.now() - entry.confirmedAt >= 0 && Date.now() - entry.confirmedAt <= detectionCacheAge;
+}
 
 function rememberedBlackboard(location = window.location) {
-    if (!rememberedPage || typeof rememberedPage.route !== 'string' ||
-        !Number.isFinite(rememberedPage.confirmedAt) ||
-        Date.now() - rememberedPage.confirmedAt < 0 || Date.now() - rememberedPage.confirmedAt > detectionCacheAge) return false;
+    if (!validDetectionEntry(rememberedPage)) return false;
     const path = location.pathname || '/';
     // Do not apply a learned site's theme to unrelated pages on the same host.
     return path === rememberedPage.route ||
@@ -70,6 +74,10 @@ function isBlackboardPage(doc = document, location = window.location) {
 
 function detectedBlackboard() {
     if (isBlackboardPage() || rememberedBlackboard()) return true;
+    // Blackboard may host its web document renderer on a different origin.
+    // Only a recognized viewer frame referred by a recently detected site can
+    // inherit that association; ordinary third-party frames remain untouched.
+    if (rememberedPDFParent && window.top !== window && isPDFDocument()) return true;
     // Classic course frames can inherit detection only from a same-origin
     // Blackboard parent. Cross-origin embeds and PDF viewers stay excluded.
     try {
@@ -78,16 +86,23 @@ function detectedBlackboard() {
     } catch { return false; }
 }
 
-const detectionMarkers = 'meta, script[src], link[href], body#learn-oe-body, bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"], [bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema';
+const detectionMarkers = 'meta, script[src], link[href], body#learn-oe-body, bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"], [bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema, .toolbar-start-container, #pageNumber';
 
 function watchForBlackboard() {
     if (started || isNativePDFDocument()) return;
     startExtension();
     if (!started && !detectionCacheRead) {
         detectionCacheRead = true;
-        chrome.storage.local.get(detectionCacheKey, saved => {
+        let parentKey = null;
+        try {
+            const referrer = new URL(document.referrer);
+            if (window.top !== window && /^https?:$/.test(referrer.protocol)) parentKey = 'bbl-detected:' + referrer.origin;
+        } catch { /* No usable referrer: rely on the page's own detection. */ }
+        const keys = parentKey ? [detectionCacheKey, parentKey] : detectionCacheKey;
+        chrome.storage.local.get(keys, saved => {
             if (chrome.runtime.lastError) return;
             rememberedPage = saved[detectionCacheKey];
+            rememberedPDFParent = parentKey && validDetectionEntry(saved[parentKey]);
             startExtension();
         });
     }
@@ -108,8 +123,37 @@ function watchForBlackboard() {
         attributes: true, attributeFilter: ['id', 'src', 'href', 'rel', 'name', 'content', 'data-analytics-id', 'bb-translate', 'bb-click-to-invoke-child'] });
 }
 
-const pdfRoots = '.pdfViewer, .pdf-viewer, pdf-viewer, #viewerContainer, .textLayer, .annotationLayer, .canvasWrapper, .react-pdf__Document, .react-pdf__Page, .rpv-core__viewer, .document-viewer, .documentViewer, .file-preview, [data-testid="pdf-viewer"], [data-test-id="pdf-viewer"], [data-analytics-id*="pdf-viewer" i], [class*="pdf-viewer" i], [class*="pdfviewer" i]';
+const pdfRoots = '.pdfViewer, .pdf-viewer, pdf-viewer, #viewerContainer, .textLayer, .annotationLayer, .canvasWrapper, .react-pdf__Document, .react-pdf__Page, .rpv-core__viewer, .document-viewer, .documentViewer, .file-preview, [data-testid="pdf-viewer"], [data-test-id="pdf-viewer"], [data-analytics-id*="pdf-viewer" i], [class*="pdf-viewer" i], [class*="pdfviewer" i], [data-bbl-pdf-root="true"]';
 const outsidePDF = `:not(:where(${pdfRoots}, :is(${pdfRoots}) *))`;
+const markedPDFRoots = new Set();
+let pdfDocumentMode = false;
+const pdfLoadMarkers = '.toolbar-start-container, #pageNumber, canvas';
+
+function pdfToolbars() {
+    return [...document.querySelectorAll('.toolbar-start-container')].filter(toolbar =>
+        toolbar.querySelector('#pageNumber') && toolbar.querySelector('.toolbar-pageNumber'));
+}
+
+function refreshPDFContainers() {
+    const roots = new Set();
+    for (const toolbar of pdfToolbars()) {
+        if (window.top !== window) { roots.add(document.documentElement); continue; }
+        let root = null;
+        for (let node = toolbar.parentElement; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+            if (node.querySelector('canvas, .pdfViewer, .textLayer, .annotationLayer, [data-page-number]')) { root = node; break; }
+        }
+        root ||= toolbar.parentElement;
+        if (!root || root === document.body || root === document.documentElement) continue;
+        // The scrollbar can belong to a wrapper above the toolbar and pages.
+        for (let node = root.parentElement; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+            const style = getComputedStyle(node);
+            if (/^(auto|scroll)$/.test(style.overflowY || style.overflow || '') && node.scrollHeight > node.clientHeight) { root = node; break; }
+        }
+        roots.add(root);
+    }
+    for (const root of markedPDFRoots) if (!roots.has(root)) { root.removeAttribute('data-bbl-pdf-root'); markedPDFRoots.delete(root); }
+    for (const root of roots) { root.setAttribute('data-bbl-pdf-root', 'true'); markedPDFRoots.add(root); }
+}
 
 function isNativePDFDocument() {
     const pathname = window.location.pathname || '';
@@ -120,7 +164,7 @@ function isPDFDocument() {
     const pathname = window.location.pathname || '';
     if (isNativePDFDocument()) return true;
     // An embedded viewer document must not receive themes, fonts or course styles.
-    const viewer = document.querySelector(pdfRoots);
+    const viewer = document.querySelector(pdfRoots) || pdfToolbars()[0];
     return Boolean(viewer && (window.top !== window || !/^\/ultra(?:\/|$)/.test(pathname)));
 }
 
@@ -181,9 +225,12 @@ function setSheet(id, css) {
 
 function watchStylesheets() {
     if (stylesheetObserver) return;
-    stylesheetObserver = new MutationObserver(() => {
+    stylesheetObserver = new MutationObserver(records => {
+        const viewerChanged = records.some(record => (record.type === 'attributes' ? [record.target] : [...(record.addedNodes || []), ...(record.removedNodes || [])]).some(node =>
+            node.nodeType === 1 && (node.matches(pdfLoadMarkers) || node.querySelector(pdfLoadMarkers))));
+        if (viewerChanged) refreshPDFContainers();
         if (restoreQueued || (!([...expectedSheets].some(id => !document.getElementById(id))) &&
-            !(surfacesEnabled && surfaceRoot !== document.body))) return;
+            !(surfacesEnabled && surfaceRoot !== document.body) && !(viewerChanged && pdfDocumentMode !== isPDFDocument()))) return;
         restoreQueued = true;
         requestAnimationFrame(() => {
             restoreQueued = false;
@@ -191,7 +238,7 @@ function watchStylesheets() {
         });
     });
     // Blackboard can rebuild its head or body during initial hydration.
-    stylesheetObserver.observe(document.documentElement, { childList: true, subtree: true });
+    stylesheetObserver.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
 }
 
 // Blackboard changes generated class names. Detect neutral light UI backgrounds
@@ -430,11 +477,14 @@ function renderScrollbar(pdf = false, wholeViewer = false) {
     const thumb = mode === 'theme' ? palette.accent : color(options[prefix + 'Thumb'], defaults[prefix + 'Thumb']);
     const track = mode === 'theme' ? palette.primary : color(options[prefix + 'Track'], defaults[prefix + 'Track']);
     const width = options[prefix + 'Width'] === 'normal' ? '12px' : '8px';
-    // Use scrollbar pseudo-elements so colors are not inherited by PDF roots.
+    // Website colors use pseudo-elements to avoid inheritance into PDF roots.
+    // Explicit PDF customization also overrides native scrollbar-color rules
+    // within the detected viewer so its own stylesheet cannot mask the setting.
     // Keep overflow unchanged: wheel, touch, keyboard and horizontal scrolling
     // continue working even when the visual scrollbar is hidden.
     apply(`
-        ${select('')} { scrollbar-width: auto !important; }
+        ${select('')} { scrollbar-width: ${pdf && options[prefix + 'Width'] !== 'normal' ? 'thin' : 'auto'} !important;
+            ${pdf ? `scrollbar-color: ${thumb} ${track} !important;` : ''} }
         ${select('::-webkit-scrollbar')} { width: ${width} !important; height: ${width} !important; }
         ${select('::-webkit-scrollbar-track')}, ${select('::-webkit-scrollbar-corner')} { background-color: ${track} !important; }
         ${select('::-webkit-scrollbar-thumb')} {
@@ -641,7 +691,9 @@ function renderCourses() {
 }
 
 function renderOptions() {
-    if (isPDFDocument()) { clearDocumentStyles(); renderScrollbar(true, true); return; }
+    refreshPDFContainers();
+    pdfDocumentMode = isPDFDocument();
+    if (pdfDocumentMode) { clearDocumentStyles(); renderScrollbar(true, true); return; }
     renderTheme();
     renderFont();
     renderCourses();
