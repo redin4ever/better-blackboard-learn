@@ -1,4 +1,4 @@
-# Local repair, version 1.2.17
+# Local repair, version 1.2.19
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -6,6 +6,15 @@ The upstream MIT license and original assets are retained.
 Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
+
+- Use quiet fallback colors when the popup has no saved palette. Restore valid
+  custom color preferences before legacy picker values. Missing preferences no
+  longer generate extension errors; genuine storage failures still report a warning.
+
+- Add a separate embedded PDF scrollbar target with its own saved mode, width
+  and colors. Keep it off by default. Apply it only within inline viewer roots
+  or detected same-origin HTML viewer frames, without document theming, fonts
+  or course API requests. Native Chrome PDF documents remain untouched.
 
 - Add a Website scrollbar settings panel with default, theme, custom and hidden
   modes. Save the selection across refreshes; custom mode provides thumb and
@@ -92,7 +101,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-89 automated checks passed with a simulated DOM and Chrome storage. They cover
+98 automated checks passed with a simulated DOM and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.
@@ -121,6 +130,11 @@ stylesheets, replaced heads and bodies, disabled themes and late PDF viewers.
 Scrollbar checks cover defaults, hidden/custom/theme modes, live changes,
 invalid saved values, refresh persistence, stylesheet recovery, popup save/reset
 and cancel behavior, unrelated sites and PDF exclusions.
+PDF scrollbar checks cover opt-in behavior, independent website preferences,
+HTML viewer frames, refresh through remembered parent detection, document color
+preservation, native PDF exclusions and separate popup save/reset behavior.
+Color-picker checks cover fresh storage without error messages and restoration
+of saved custom colors ahead of legacy values.
 
 No browser automation was used. Signed-in rendering across universities remains
 unverified; pages may contain additional selectors not covered by this repair.

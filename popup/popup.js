@@ -386,39 +386,26 @@ document.getElementById("return-to-menu-options").onclick = function() {
 
 // Function to apply custom theme to popup
 function applyCustomThemeToPopup() {
-  chrome.storage.sync.get(['sidebarColor', 'secondaryColor', 'primaryColor'], function(result) {
-    var sidebarColor = result.sidebarColor;
-    var secondaryColor = result.secondaryColor;
-    var primaryColor = result.primaryColor;
-
-    if (sidebarColor) {
-      sidebarcolorPicker.value = sidebarColor;
-      document.getElementById('sidebar-color-text').value = sidebarColor;
-    } else {
-      console.error("No sidebar color found in storage.");
-      sidebarcolorPicker.value = "#102D70"; // Fallback color
-      document.getElementById('sidebar-color-text').value = "#102D70"; // Fallback color
+  chrome.storage.sync.get(['customprimary', 'customsecondary', 'customsidebar', 'primaryColor', 'secondaryColor', 'sidebarColor'], function(saved) {
+    if (chrome.runtime.lastError) {
+      console.warn('Better Blackboard: color preferences could not be loaded.');
+      return;
     }
-
-    if (secondaryColor) {
-      secondarycolorPicker.value = secondaryColor;
-      document.getElementById('secondary-color-text').value = secondaryColor;
-    } else {
-      console.error("No secondary color found in storage.");
-      secondarycolorPicker.value = "#FFFFFF"; // Fallback color
-      document.getElementById('secondary-color-text').value = "#FFFFFF"; // Fallback color
-    }
-
-    if (primaryColor) {
-      primarycolorPicker.value = primaryColor;
-      document.getElementById('primary-color-text').value = primaryColor;
-    } else {
-      console.error("No primary color found in storage.");
-      primarycolorPicker.value = "#1F1F1F"; // Fallback color
-      document.getElementById('primary-color-text').value = "#1F1F1F"; // Fallback color
+    const fields = [
+      ['primary', primarycolorPicker, '#1F1F1F'],
+      ['secondary', secondarycolorPicker, '#FFFFFF'],
+      ['sidebar', sidebarcolorPicker, '#102D70']
+    ];
+    for (const [name, picker, fallback] of fields) {
+      const custom = saved['custom' + name];
+      const legacy = saved[name + 'Color'];
+      const value = /^#[0-9a-f]{6}$/i.test(custom) ? custom : /^#[0-9a-f]{6}$/i.test(legacy) ? legacy : fallback;
+      picker.value = value;
+      document.getElementById(name + '-color-text').value = value;
     }
   });
 }
+
 
 document.addEventListener('DOMContentLoaded', function() {
   applyCustomThemeToPopup();
@@ -453,6 +440,8 @@ function updateColor(input) {
 
 // Blackboard website scrollbar preferences.
 const scrollbarDefaults = { scrollbarMode: 'default', scrollbarWidth: 'thin', scrollbarThumb: '#808080', scrollbarTrack: '#1f1f1f' };
+const pdfScrollbarDefaults = { pdfScrollbarMode: 'default', pdfScrollbarWidth: 'thin', pdfScrollbarThumb: '#808080', pdfScrollbarTrack: '#1f1f1f' };
+const scrollbarTarget = document.getElementById('scrollbar-target');
 const scrollbarPanel = document.getElementById('scrollbar-options');
 const scrollbarMode = document.getElementById('scrollbar-mode');
 const scrollbarWidth = document.getElementById('scrollbar-width');
@@ -465,6 +454,9 @@ function showScrollbarControls() {
 }
 
 function fillScrollbarControls(saved) {
+  if (scrollbarTarget.value === 'pdf') {
+    saved = Object.fromEntries(Object.keys(scrollbarDefaults).map(key => [key, saved['pdf' + key[0].toUpperCase() + key.slice(1)]]));
+  }
   scrollbarMode.value = ['default', 'theme', 'custom', 'hidden'].includes(saved.scrollbarMode) ? saved.scrollbarMode : 'default';
   scrollbarWidth.value = saved.scrollbarWidth === 'normal' ? 'normal' : 'thin';
   scrollbarThumb.value = /^#[0-9a-f]{6}$/i.test(saved.scrollbarThumb) ? saved.scrollbarThumb : scrollbarDefaults.scrollbarThumb;
@@ -482,16 +474,24 @@ document.getElementById('scrollbar-button').onclick = function() {
   title.style.display = 'none';
   mainoptions.style.display = 'none';
   scrollbarPanel.style.display = 'flex';
-  chrome.storage.sync.get(Object.keys(scrollbarDefaults), saved => { fillScrollbarControls(saved); });
+  scrollbarTarget.value = 'website';
+  loadScrollbarControls();
 };
+function loadScrollbarControls() {
+  chrome.storage.sync.get([...Object.keys(scrollbarDefaults), ...Object.keys(pdfScrollbarDefaults)], saved => { fillScrollbarControls(saved); });
+}
+scrollbarTarget.addEventListener('change', loadScrollbarControls);
 scrollbarMode.addEventListener('change', showScrollbarControls);
 document.getElementById('save-scrollbar').onclick = function() {
-  chrome.storage.sync.set({ scrollbarMode: scrollbarMode.value, scrollbarWidth: scrollbarWidth.value,
-    scrollbarThumb: scrollbarThumb.value, scrollbarTrack: scrollbarTrack.value });
+  const values = { scrollbarMode: scrollbarMode.value, scrollbarWidth: scrollbarWidth.value,
+    scrollbarThumb: scrollbarThumb.value, scrollbarTrack: scrollbarTrack.value };
+  const saved = scrollbarTarget.value === 'pdf' ? Object.fromEntries(Object.entries(values).map(([key, value]) =>
+    ['pdf' + key[0].toUpperCase() + key.slice(1), value])) : values;
+  chrome.storage.sync.set(saved);
   closeScrollbarOptions();
 };
 document.getElementById('reset-scrollbar').onclick = function() {
-  chrome.storage.sync.set(scrollbarDefaults);
+  chrome.storage.sync.set(scrollbarTarget.value === 'pdf' ? pdfScrollbarDefaults : scrollbarDefaults);
   closeScrollbarOptions();
 };
 document.getElementById('cancel-scrollbar').onclick = closeScrollbarOptions;

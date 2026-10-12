@@ -9,7 +9,7 @@ A repaired Chrome extension for dark mode and custom themes on Blackboard Learn,
 - Theme updates for dynamically loaded course pages and frames.
 - Readable grade pills, including Arabic scores and ungraded placeholders.
 - Course headers, navigation tabs, and active-tab borders follow the selected theme.
-- Website scrollbar controls: keep the default, follow the theme, choose custom colors and width, or hide the bar.
+- Separate website and embedded PDF scrollbar controls: keep the default, follow the theme, choose custom colors and width, or hide the bar.
 - PDF viewers excluded from theme changes.
 - Automatic detection of Blackboard Ultra and Classic pages on custom domains.
 
@@ -37,9 +37,9 @@ Keep the folder in place while using the extension. After updating its files, cl
 
 ## Website scrollbar
 
-Open the extension and select **Scrollbars**. Choose **Default website scrollbar**, **Follow theme**, **Custom colors**, or **Hidden**, then click **Save**. Theme and custom modes offer thin or normal width. Custom mode also lets you choose the thumb and track colors.
+Open the extension and select **Scrollbars**. Select **Website** or **Embedded PDF viewer**, then choose **Default scrollbar**, **Follow theme**, **Custom colors**, or **Hidden** and click **Save**. Theme and custom modes offer thin or normal width. Custom mode also lets you choose the thumb and track colors.
 
-The preference is saved and applies to detected Blackboard pages and course frames. Hidden mode keeps wheel, touch, and keyboard scrolling available. **Reset** restores the website's scrollbar. PDF viewers keep their own scrollbars. Styling uses Chrome's [scrollbar pseudo-elements](https://developer.chrome.com/docs/css-ui/scrollbar-styling) with PDF exclusions.
+Each target's preference is saved separately and applies to detected Blackboard pages and same-origin course/viewer frames. Hidden mode keeps wheel, touch, and keyboard scrolling available. **Reset** restores only the selected target's scrollbar. PDF scrollbar customization is off by default and never recolors PDF content. Chrome's built-in PDF viewer cannot be styled by this extension. Styling uses Chrome's [scrollbar pseudo-elements](https://developer.chrome.com/docs/css-ui/scrollbar-styling); website rules exclude PDF viewer elements.
 
 ## Validation
 
@@ -49,7 +49,7 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 89 automated checks use simulated DOM and Chrome storage fixtures. They cover scrollbar settings and persistence, refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
+The 98 automated checks use simulated DOM and Chrome storage fixtures. They cover separate website/PDF scrollbar settings and persistence, quiet color defaults and saved custom colors, refreshes with delayed page markers, stylesheet removal, rebuilt page heads and bodies, custom-domain detection, unrelated pages, course frames, theme startup, storage, popup controls, PDF exclusions, background changes, and grade contrast. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 

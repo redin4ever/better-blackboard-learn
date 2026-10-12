@@ -50,10 +50,15 @@
         </div>
     
         <div id="scrollbar-options">
-  <h3>Website scrollbar</h3>
+  <h3>Scrollbars</h3>
+  <label for="scrollbar-target">Scrollbar</label>
+  <select id="scrollbar-target">
+    <option value="website">Website</option>
+    <option value="pdf">Embedded PDF viewer</option>
+  </select>
   <label for="scrollbar-mode">Appearance</label>
   <select id="scrollbar-mode">
-    <option value="default">Default website scrollbar</option>
+    <option value="default">Default scrollbar</option>
     <option value="theme">Follow theme</option>
     <option value="custom">Custom colors</option>
     <option value="hidden">Hidden</option>
@@ -69,7 +74,7 @@
     <label for="scrollbar-thumb">Thumb color <input id="scrollbar-thumb" type="color" value="#808080"></label>
     <label for="scrollbar-track">Track color <input id="scrollbar-track" type="color" value="#1f1f1f"></label>
   </div>
-  <p>Changes the Blackboard page scrollbar. Hidden keeps wheel, touch, and keyboard scrolling available. PDFs keep their own scrollbars.</p>
+  <p id="scrollbar-help">Website and embedded PDF scrollbars have separate settings. Hidden keeps scrolling available. Chrome's built-in PDF viewer cannot be styled.</p>
   <div class="action-buttons">
     <button id="reset-scrollbar" class="remove-setting-button">Reset</button>
     <button id="save-scrollbar" class="save-setting-button">Save</button>

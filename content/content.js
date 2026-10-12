@@ -5,7 +5,8 @@ const defaults = {
     colorscheme: 'default', theme: 'default', customprimary: 'default',
     customsecondary: 'default', customsidebar: 'default', customfont: 'default',
     matchSidebarToCourseCards: false, courseImageMap: [], courseNameMap: [],
-    scrollbarMode: 'default', scrollbarWidth: 'thin', scrollbarThumb: '#808080', scrollbarTrack: '#1f1f1f'
+    scrollbarMode: 'default', scrollbarWidth: 'thin', scrollbarThumb: '#808080', scrollbarTrack: '#1f1f1f',
+    pdfScrollbarMode: 'default', pdfScrollbarWidth: 'thin', pdfScrollbarThumb: '#808080', pdfScrollbarTrack: '#1f1f1f'
 };
 let options = { ...defaults };
 let started = false;
@@ -30,18 +31,18 @@ const detectionCacheAge = 30 * 24 * 60 * 60 * 1000;
 let detectionCacheRead = false;
 let rememberedPage = null;
 
-function rememberedBlackboard() {
+function rememberedBlackboard(location = window.location) {
     if (!rememberedPage || typeof rememberedPage.route !== 'string' ||
         !Number.isFinite(rememberedPage.confirmedAt) ||
         Date.now() - rememberedPage.confirmedAt < 0 || Date.now() - rememberedPage.confirmedAt > detectionCacheAge) return false;
-    const path = window.location.pathname || '/';
+    const path = location.pathname || '/';
     // Do not apply a learned site's theme to unrelated pages on the same host.
     return path === rememberedPage.route ||
         /^\/(?:ultra(?:\/|$)|webapps\/(?:blackboard|bbng|bbgs|portal|assessment|gradebook)(?:\/|$))/i.test(path);
 }
 
 function rememberBlackboard() {
-    if (window.top !== window || !isBlackboardPage()) return;
+    if (window.top !== window || isPDFDocument() || !isBlackboardPage()) return;
     const entry = { route: window.location.pathname || '/', confirmedAt: Date.now() };
     chrome.storage.local.set({ [detectionCacheKey]: entry }, () => { void chrome.runtime.lastError; });
 }
@@ -73,14 +74,14 @@ function detectedBlackboard() {
     // Blackboard parent. Cross-origin embeds and PDF viewers stay excluded.
     try {
         return window.parent !== window && window.parent.location.origin === domain &&
-            isBlackboardPage(window.parent.document, window.parent.location);
+            (isBlackboardPage(window.parent.document, window.parent.location) || rememberedBlackboard(window.parent.location));
     } catch { return false; }
 }
 
 const detectionMarkers = 'meta, script[src], link[href], body#learn-oe-body, bb-base-layout, bb-base-navigation, [data-analytics-id="base.navigation.drawer"], [bb-translate], [bb-click-to-invoke-child], bb-course-content, bb-grading-schema';
 
 function watchForBlackboard() {
-    if (started || isPDFDocument()) return;
+    if (started || isNativePDFDocument()) return;
     startExtension();
     if (!started && !detectionCacheRead) {
         detectionCacheRead = true;
@@ -99,7 +100,7 @@ function watchForBlackboard() {
         detectionQueued = true;
         requestAnimationFrame(() => {
             detectionQueued = false;
-            if (isPDFDocument()) { detectionObserver?.disconnect(); detectionObserver = null; return; }
+            if (isNativePDFDocument()) { detectionObserver?.disconnect(); detectionObserver = null; return; }
             startExtension();
         });
     });
@@ -110,9 +111,14 @@ function watchForBlackboard() {
 const pdfRoots = '.pdfViewer, .pdf-viewer, pdf-viewer, #viewerContainer, .textLayer, .annotationLayer, .canvasWrapper, .react-pdf__Document, .react-pdf__Page, .rpv-core__viewer, .document-viewer, .documentViewer, .file-preview, [data-testid="pdf-viewer"], [data-test-id="pdf-viewer"], [data-analytics-id*="pdf-viewer" i], [class*="pdf-viewer" i], [class*="pdfviewer" i]';
 const outsidePDF = `:not(:where(${pdfRoots}, :is(${pdfRoots}) *))`;
 
+function isNativePDFDocument() {
+    const pathname = window.location.pathname || '';
+    return document.contentType === 'application/pdf' || /\.pdf$/i.test(pathname);
+}
+
 function isPDFDocument() {
     const pathname = window.location.pathname || '';
-    if (document.contentType === 'application/pdf' || /\.pdf$/i.test(pathname)) return true;
+    if (isNativePDFDocument()) return true;
     // An embedded viewer document must not receive themes, fonts or course styles.
     const viewer = document.querySelector(pdfRoots);
     return Boolean(viewer && (window.top !== window || !/^\/ultra(?:\/|$)/.test(pathname)));
@@ -379,7 +385,7 @@ function updateSurfaceFix(enabled) {
     surfaceRoot = document.body;
     markLightSurfaces(document.body);
     surfaceObserver = new MutationObserver(records => {
-        if (isPDFDocument()) { clearDocumentStyles(); return; }
+        if (isPDFDocument()) { renderOptions(); return; }
         for (const record of records) {
             if (record.type === 'attributes') queueSurfaceScan(record.target);
             else for (const node of record.addedNodes) queueSurfaceScan(node.nodeType === 1 ? node : record.target);
@@ -405,33 +411,38 @@ function themePalette() {
     };
 }
 
-function renderScrollbar() {
-    const mode = options.scrollbarMode;
-    if (!['theme', 'custom', 'hidden'].includes(mode)) { setSheet('bbl-scrollbar', ''); return; }
+function renderScrollbar(pdf = false, wholeViewer = false) {
+    const prefix = pdf ? 'pdfScrollbar' : 'scrollbar';
+    const sheetID = pdf ? 'bbl-pdf-scrollbar' : 'bbl-scrollbar';
+    const mode = options[prefix + 'Mode'];
+    if (!['theme', 'custom', 'hidden'].includes(mode)) { setSheet(sheetID, ''); return; }
+    const selectors = pdf && !wholeViewer ? splitSelectors(pdfRoots).flatMap(root => [root.trim(), root.trim() + ' *']) : ['*'];
+    const select = pseudo => selectors.map(selector => selector + pseudo).join(',\n');
+    const apply = css => setSheet(sheetID, pdf ? css : scopeThemeCSS(css));
     if (mode === 'hidden') {
-        setSheet('bbl-scrollbar', scopeThemeCSS(`
-            * { scrollbar-width: none !important; }
-            *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
-        `));
+        apply(`
+            ${select('')} { scrollbar-width: none !important; }
+            ${select('::-webkit-scrollbar')} { display: none !important; width: 0 !important; height: 0 !important; }
+        `);
         return;
     }
     const palette = themePalette();
-    const thumb = mode === 'theme' ? palette.accent : color(options.scrollbarThumb, defaults.scrollbarThumb);
-    const track = mode === 'theme' ? palette.primary : color(options.scrollbarTrack, defaults.scrollbarTrack);
-    const width = options.scrollbarWidth === 'normal' ? '12px' : '8px';
+    const thumb = mode === 'theme' ? palette.accent : color(options[prefix + 'Thumb'], defaults[prefix + 'Thumb']);
+    const track = mode === 'theme' ? palette.primary : color(options[prefix + 'Track'], defaults[prefix + 'Track']);
+    const width = options[prefix + 'Width'] === 'normal' ? '12px' : '8px';
     // Use scrollbar pseudo-elements so colors are not inherited by PDF roots.
     // Keep overflow unchanged: wheel, touch, keyboard and horizontal scrolling
     // continue working even when the visual scrollbar is hidden.
-    setSheet('bbl-scrollbar', scopeThemeCSS(`
-        * { scrollbar-width: auto !important; }
-        *::-webkit-scrollbar { width: ${width} !important; height: ${width} !important; }
-        *::-webkit-scrollbar-track, *::-webkit-scrollbar-corner { background-color: ${track} !important; }
-        *::-webkit-scrollbar-thumb {
+    apply(`
+        ${select('')} { scrollbar-width: auto !important; }
+        ${select('::-webkit-scrollbar')} { width: ${width} !important; height: ${width} !important; }
+        ${select('::-webkit-scrollbar-track')}, ${select('::-webkit-scrollbar-corner')} { background-color: ${track} !important; }
+        ${select('::-webkit-scrollbar-thumb')} {
             background-color: ${thumb} !important;
             border: 2px solid ${track} !important; border-radius: 999px !important;
         }
-        *::-webkit-scrollbar-button { display: none !important; }
-    `));
+        ${select('::-webkit-scrollbar-button')} { display: none !important; }
+    `);
 }
 
 function renderTheme() {
@@ -630,11 +641,12 @@ function renderCourses() {
 }
 
 function renderOptions() {
-    if (isPDFDocument()) { clearDocumentStyles(); return; }
+    if (isPDFDocument()) { clearDocumentStyles(); renderScrollbar(true, true); return; }
     renderTheme();
     renderFont();
     renderCourses();
     renderScrollbar();
+    renderScrollbar(true);
 }
 
 function onPreferencesChanged(changes, areaName) {
@@ -672,7 +684,7 @@ async function loadCourseList() {
 }
 
 function startExtension() {
-    if (started || isPDFDocument() || !detectedBlackboard()) return;
+    if (started || isNativePDFDocument() || !detectedBlackboard()) return;
     started = true;
     detectionObserver?.disconnect();
     detectionObserver = null;
@@ -688,7 +700,7 @@ function startExtension() {
         renderOptions();
         watchStylesheets();
     });
-    if (window.top === window) void loadCourseList();
+    if (window.top === window && !isPDFDocument()) void loadCourseList();
 }
 
 if (document.readyState === 'loading') {

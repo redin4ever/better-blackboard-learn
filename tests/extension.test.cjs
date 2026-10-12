@@ -140,8 +140,9 @@ function fixture(saved = {}, config = {}) {
     window.top = config.frame ? {} : window;
     window.parent = config.parent || window;
     const requests = [];
+    const consoleErrors = [];
     const observers = [];
-    const context = vm.createContext({ window, document: doc, chrome, console: { warn() {}, log() {}, error() {} },
+    const context = vm.createContext({ window, document: doc, chrome, console: { warn() {}, log() {}, error: (...values) => consoleErrors.push(values.join(' ')) },
         getComputedStyle: element => element.computed,
         requestAnimationFrame: callback => { queueMicrotask(callback); },
         MutationObserver: class {
@@ -155,7 +156,7 @@ function fixture(saved = {}, config = {}) {
             if (config.fetch) return config.fetch(url, options);
             throw new Error('Simulated unavailable Blackboard API'); }
     });
-    return { doc, context, head, storage, storageReads, localStorage, localReads, listeners, observers, window, chrome, elements, requests,
+    return { doc, context, head, storage, storageReads, localStorage, localReads, listeners, observers, window, chrome, elements, requests, consoleErrors,
         addPanel(rgb, tag = 'div') { const panel = new Element(tag); panel.computed.backgroundColor = rgb; body.appendChild(panel); return panel; },
         async mutations(records) { for (const observer of observers) if (observer.connected) observer.callback(records); await flush(); },
         async run() { vm.runInContext(content, context); await flush(); },
@@ -475,6 +476,22 @@ test('popup typed hex colors work and invalid input cannot reset the picker', as
     assert.equal(f.elements.get('primary-color-input').value, '#123456');
     input.value = 'invalid'; input.fire('input'); assert.equal(f.elements.get('primary-color-input').value, '#123456');
 });
+
+test('a fresh popup uses color defaults without reporting missing preferences as errors', async () => {
+    const f = fixture({}, { popup: true }); await f.runPopup();
+    assert.deepEqual(f.consoleErrors, []);
+    assert.equal(f.elements.get('primary-color-input').value, '#1F1F1F');
+    assert.equal(f.elements.get('secondary-color-input').value, '#FFFFFF');
+    assert.equal(f.elements.get('sidebar-color-input').value, '#102D70');
+});
+
+test('popup color pickers restore saved custom colors ahead of legacy values', async () => {
+    const f = fixture({ customprimary: '#123456', primaryColor: '#654321', customsecondary: '#abcdef', customsidebar: '#111111' }, { popup: true });
+    await f.runPopup(); assert.deepEqual(f.consoleErrors, []);
+    assert.equal(f.elements.get('primary-color-input').value, '#123456');
+    assert.equal(f.elements.get('secondary-color-input').value, '#abcdef');
+    assert.equal(f.elements.get('sidebar-color-input').value, '#111111');
+});
 test('popup course reset clears both customization maps', async () => {
     const f = fixture({ courseImageMap: [['_1_1', 'https://example.com/a.png']], courseNameMap: [['_1_1', 'Course']] }, { popup: true });
     await f.runPopup(); f.elements.get('reset-banner-options').fire('click'); await flush();
@@ -580,6 +597,75 @@ test('leaving scrollbar options without saving keeps the existing preference', a
     const f = fixture({ scrollbarMode: 'theme' }, { popup: true }); await f.runPopup();
     f.elements.get('scrollbar-button').fire('click'); await flush(); f.elements.get('scrollbar-mode').value = 'hidden';
     f.elements.get('cancel-scrollbar').fire('click'); await flush(); assert.equal(f.storage.scrollbarMode, 'theme');
+});
+
+test('PDF scrollbar customization is opt-in and independent of the website scrollbar', async () => {
+    const f = fixture({ scrollbarMode: 'hidden' }); await f.run();
+    assert.equal(f.doc.getElementById('bbl-pdf-scrollbar'), null);
+    await f.change({ pdfScrollbarMode: 'custom', pdfScrollbarThumb: '#abcdef', pdfScrollbarTrack: '#123456' });
+    const css = f.doc.getElementById('bbl-pdf-scrollbar').textContent;
+    assert.match(css, /background-color: #abcdef/); assert.match(css, /background-color: #123456/);
+    for (const rule of css.matchAll(/([^{}]+)\{[^{}]*\}/g)) {
+        assert.match(rule[1], /\.pdfViewer/); assert.doesNotMatch(rule[1], /:not\(:where\(/);
+    }
+    assert.match(f.doc.getElementById('bbl-scrollbar').textContent, /scrollbar-width: none/);
+    await f.change({ pdfScrollbarMode: 'default' }); assert.equal(f.doc.getElementById('bbl-pdf-scrollbar'), null);
+});
+
+test('a same-origin PDF viewer frame receives only opted-in scrollbar styles', async () => {
+    const parent = fixture({}, { host: 'courses.example.edu', blackboard: true });
+    const f = fixture({ colorscheme: 'dark', customfont: 'Open Sans', scrollbarMode: 'hidden', pdfScrollbarMode: 'custom' },
+        { host: 'courses.example.edu', blackboard: false, frame: true, pathname: '/viewer.html',
+          parent: { document: parent.doc, location: parent.window.location } });
+    const viewer = f.addPanel('white'); viewer.classList.add('pdfViewer'); await f.run();
+    assert.equal(f.head.children.length, 1); assert.ok(f.doc.getElementById('bbl-pdf-scrollbar'));
+    assert.equal(f.doc.getElementById('bbl-font'), null); assert.equal(f.css(), ''); assert.equal(f.requests.length, 0);
+    assert.equal(viewer.getAttribute('data-bbl-surface'), null);
+});
+
+test('remembered parent detection restores PDF scrollbar settings on iframe refresh', async () => {
+    const first = fixture({ pdfScrollbarMode: 'hidden' }); await first.run();
+    const parent = fixture({}, { blackboard: false });
+    const f = fixture({ pdfScrollbarMode: 'hidden' }, { blackboard: false, frame: true, pathname: '/viewer.html', localStorage: first.localStorage,
+        parent: { document: parent.doc, location: parent.window.location } });
+    const viewer = f.addPanel('white'); viewer.classList.add('pdfViewer'); await f.run();
+    assert.match(f.doc.getElementById('bbl-pdf-scrollbar').textContent, /scrollbar-width: none/);
+    assert.equal(f.requests.length, 0); assert.equal(f.css(), '');
+});
+
+test('PDF scrollbar theme colors change without recoloring the document', async () => {
+    const f = fixture({ pdfScrollbarMode: 'theme', customprimary: '#123456', customsecondary: '#abcdef' });
+    const viewer = f.addPanel('white'); viewer.classList.add('pdfViewer'); await f.run();
+    const css = f.doc.getElementById('bbl-pdf-scrollbar').textContent;
+    assert.match(css, /background-color: #abcdef/); assert.match(css, /background-color: #123456/);
+    assert.equal(viewer.getAttribute('data-bbl-surface'), null); assert.equal(viewer.computed.backgroundColor, 'white');
+    assert.doesNotMatch(css, /overflow\s*:|scrollbar-color\s*:/);
+});
+
+test('native PDF documents remain untouched even with PDF scrollbar customization enabled', async () => {
+    const f = fixture({ scrollbarMode: 'hidden', pdfScrollbarMode: 'hidden' }, { contentType: 'application/pdf' }); await f.run();
+    assert.equal(f.head.children.length, 0); assert.equal(f.storageReads.length, 0); assert.equal(f.requests.length, 0);
+});
+
+test('popup saves PDF scrollbar settings without changing website preferences', async () => {
+    const f = fixture({ scrollbarMode: 'hidden', pdfScrollbarMode: 'theme' }, { popup: true }); await f.runPopup();
+    f.elements.get('scrollbar-button').fire('click'); await flush();
+    const target = f.elements.get('scrollbar-target'); target.value = 'pdf'; target.fire('change'); await flush();
+    assert.equal(f.elements.get('scrollbar-mode').value, 'theme');
+    f.elements.get('scrollbar-mode').value = 'custom'; f.elements.get('scrollbar-thumb').value = '#abcdef';
+    f.elements.get('scrollbar-track').value = '#123456'; f.elements.get('scrollbar-width').value = 'normal';
+    f.elements.get('save-scrollbar').fire('click'); await flush();
+    assert.equal(f.storage.pdfScrollbarMode, 'custom'); assert.equal(f.storage.pdfScrollbarThumb, '#abcdef');
+    assert.equal(f.storage.pdfScrollbarTrack, '#123456'); assert.equal(f.storage.pdfScrollbarWidth, 'normal');
+    assert.equal(f.storage.scrollbarMode, 'hidden');
+});
+
+test('resetting the PDF scrollbar keeps the website scrollbar preference', async () => {
+    const f = fixture({ scrollbarMode: 'hidden', pdfScrollbarMode: 'custom' }, { popup: true }); await f.runPopup();
+    f.elements.get('scrollbar-button').fire('click'); await flush();
+    f.elements.get('scrollbar-target').value = 'pdf'; f.elements.get('scrollbar-target').fire('change'); await flush();
+    f.elements.get('reset-scrollbar').fire('click'); await flush();
+    assert.equal(f.storage.pdfScrollbarMode, 'default'); assert.equal(f.storage.scrollbarMode, 'hidden');
 });
 test('manifest enables automatic detection on HTTP and HTTPS sites and course frames', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
