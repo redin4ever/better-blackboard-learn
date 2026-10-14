@@ -15,7 +15,9 @@
       "js": [
         "content/content.js",
         "content/participants-data.js",
-        "content/participants.js"
+        "content/participants.js",
+        "content/announcements-data.js",
+        "content/announcements.js"
       ],
       "matches": [
         "http://*/*",
@@ -37,5 +39,5 @@
   "permissions": [
     "storage"
   ],
-  "version": "1.2.21"
+  "version": "1.2.22"
 }

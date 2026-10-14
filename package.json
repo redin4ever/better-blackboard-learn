@@ -1,11 +1,11 @@
 {
   "name": "better-blackboard-learn-fixed",
-  "version": "1.2.21",
+  "version": "1.2.22",
   "private": true,
   "description": "Repaired Chrome themes with automatic Blackboard Learn detection",
   "license": "MIT",
   "scripts": {
-    "test": "node --test tests/extension.test.cjs tests/participants.test.cjs"
+    "test": "node --test tests/extension.test.cjs tests/participants.test.cjs tests/announcements.test.cjs"
   },
   "engines": {
     "node": ">=18"

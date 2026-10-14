@@ -13,6 +13,7 @@ A repaired Chrome extension for dark mode and custom themes on Blackboard Learn,
 - PDF viewers excluded from theme changes.
 - Automatic detection of Blackboard Ultra and Classic pages on custom domains.
 - A Participants button in Ultra course navigation, with a searchable roster styled like Blackboard's Groups table.
+- All announcements below To Do on the Courses home page, combining your classes in newest-first order.
 
 ## Automatic detection
 
@@ -54,6 +55,16 @@ The extension requests `/learn/api/v1/courses/{courseId}/memberships?expand=user
 
 Roster data stays in memory while the panel is open and is cleared on closing or switching courses. It is not saved in Chrome storage or sent to another service. Embedded frames do not receive the Participants feature.
 
+## All announcements
+
+On the Courses home page, **All announcements** appears directly below To Do in the same column. It uses the course announcement list's layout, with an Announcement column, message preview and Posted column. Each row identifies the course. Select a title to expand the formatted message and its attachment links, or select the course name to open its announcement page.
+
+The section loads automatically using your signed-in account's full course membership list. It follows course and announcement pagination, requests announcements in pages of ten, and merges all returned published messages by `startDateRestriction` from newest to oldest. Creation and modification dates provide fallbacks when a publication date is missing. Drafts, scheduled future messages, expired non-permanent messages and explicitly denied messages are omitted. Search checks course names, titles and message text across the full list. **Show more** displays another ten messages; **Refresh** reloads your courses and announcements.
+
+Requests use the current site's `/learn/api/v1/courses/{courseId}/announcements` endpoint and signed-in session. Up to three course requests run at once. If a course cannot be loaded, the section identifies the missing course rather than reporting a complete empty list. Blackboard must permit access to the course list and announcements.
+
+The feed is read-only and does not change Blackboard's read tracking. Message formatting and safe HTTP/HTTPS attachment links are preserved. Scripts, embedded viewers, remote images and inline color overrides are excluded from the injected body. Announcements stay in memory and are cleared when you leave the Courses home page; they are not saved in Chrome storage or sent to another service. The section is excluded from course pages, organizations, unrelated sites and embedded frames.
+
 ## Validation
 
 Requires Node.js 18 or later; no dependencies are needed.
@@ -62,13 +73,13 @@ Requires Node.js 18 or later; no dependencies are needed.
 npm test
 ```
 
-The 129 automated checks use simulated DOM, API responses, and Chrome storage fixtures. They cover Participants navigation spacing, redraws, resizing, requested user fields, search and sorting, pagination, permissions, cancellation, safe text rendering and Arabic controls, alongside the supplied Blackboard PDF toolbar and its scroll wrapper, associated viewer frames, separate scrollbar preferences, theme recovery, automatic detection, PDF exclusions and grade contrast. All roster test data is synthetic. Signed-in rendering across universities has not been verified through browser automation.
+The 160 automated checks use simulated DOM, API responses, and Chrome storage fixtures. They cover the announcements feed's direct placement, date sorting, course discovery, pagination, partial failures, formatting, attachment links, search, cancellation, read-only behavior and redraw recovery. They also cover Participants navigation spacing and roster behavior, the supplied Blackboard PDF toolbar, separate scrollbar preferences, theme recovery, automatic detection, PDF exclusions and grade contrast. All roster and announcement test data is synthetic. Signed-in rendering across universities has not been verified through browser automation.
 
 ## Permissions
 
 Uses Chrome's `storage` permission for preferences and a local detection cache containing recognized origins, routes, and confirmation times. Content scripts match HTTP and HTTPS pages so Blackboard can be detected on any domain. Chrome documents these patterns in its [match pattern reference](https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns).
 
-Unrecognized pages receive no theme styles, preference reads, or Blackboard API requests. Once Blackboard is detected, optional course metadata is requested from the current site's origin. See [repair notes](REPAIR-NOTES.md) for the changes.
+Unrecognized pages receive no theme styles, preference reads, or Blackboard API requests. Once Blackboard is detected, optional course metadata is requested from the current site's origin. The announcements feed requests your courses and announcements only on a recognized Ultra Courses home page with To Do. Participants requests a roster when its button is selected. See [repair notes](REPAIR-NOTES.md) for the changes.
 
 ## Contact
 

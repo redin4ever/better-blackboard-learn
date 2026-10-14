@@ -1,4 +1,4 @@
-# Local repair, version 1.2.21
+# Local repair, version 1.2.22
 
 Based on the installed Better Blackboard Learn 1.2.1 extension by Parker Williams.
 The upstream MIT license and original assets are retained.
@@ -6,6 +6,21 @@ The upstream MIT license and original assets are retained.
 Source: https://github.com/ParkerWilliams1/BetterBlackboardLearn
 
 ## Changes
+
+- Add All announcements directly after bb-todo inside the existing todo-panel.
+  Keep the marked column in natural-height vertical flow with a 12-pixel gap,
+  preventing stretched To Do wrappers from pushing the feed to the page bottom.
+  Remove the layout marker when leaving the page to restore native behavior.
+- Enumerate the signed-in account's course memberships with pagination. Fetch
+  each course's announcements from the current origin, ten per API page, with
+  at most three courses in flight. Merge publication dates in descending order;
+  report inaccessible courses and support manual refresh without saving bodies.
+- Match the supplied native Announcement/Posted list pattern, adding course
+  names, search, message previews, expandable bodies, attachment links and a
+  Show more control. Respect publication restrictions and denied permissions.
+  Reconstruct allowed HTML in an inert template, remove active content and
+  inline colors, and leave Blackboard read status unchanged. Clear data and
+  abort requests when leaving home; restore the panel after DOM replacement.
 
 - Add a Participants button before Gradebook in Ultra course navigation. Copy
   the native tab's computed padding, font, margins and title wrapper classes;
@@ -120,7 +135,7 @@ Web Store. Its settings are separate from those of the original extension.
 
 ## Validation
 
-129 automated checks passed with a simulated DOM, synthetic roster responses and Chrome storage. They cover
+160 automated checks passed with a simulated DOM, synthetic API responses and Chrome storage. They cover
 API failure and unavailable responses, saved dark mode, theme precedence,
 repeated toggles, startup timing, storage races, custom colors, preset changes,
 course frames, course metadata URLs, popup controls and upgrade persistence.

@@ -1,0 +1,56 @@
+.todo-panel[data-bbl-announcements-column] {
+  display: flex !important; flex-direction: column !important; justify-content: flex-start !important;
+  align-items: stretch; gap: 0 !important; height: auto !important; min-height: 0 !important;
+}
+.todo-panel[data-bbl-announcements-column] > bb-todo,
+.todo-panel[data-bbl-announcements-column] > bb-todo > aside {
+  flex: 0 0 auto !important; height: auto !important; min-height: 0 !important; margin-bottom: 0 !important;
+}
+#bbl-home-announcements {
+  background: var(--bbl-primary, var(--bbl-feed-native-bg, #fff)); color: var(--bbl-accent, var(--bbl-feed-native-text, #202124));
+  margin: 12px 0 0 !important; padding: 20px 16px; width: 100%; min-width: 0; box-sizing: border-box; position: static !important; height: auto;
+  flex: 0 0 auto !important; order: 0 !important;
+  border: 1px solid #8888; border-radius: 2px; font: inherit; container-type: inline-size;
+}
+#bbl-home-announcements .bbl-feed-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+#bbl-home-announcements h2 { margin: 0; font-size: 20px; line-height: 1.3; color: inherit !important; }
+#bbl-home-announcements .bbl-feed-button { font: inherit; color: inherit; background: transparent; border: 1px solid #888; border-radius: 2px; padding: 6px 10px; cursor: pointer; }
+#bbl-home-announcements .bbl-feed-button:disabled { opacity: .5; cursor: default; }
+#bbl-home-announcements .guidance-wrapper { position: static; display: flex; background: transparent; padding: 0; height: auto; min-height: 0; margin: 0 0 12px; color: inherit; font-size: 13px; }
+#bbl-home-announcements .bbl-feed-search-label { display: block; font-size: 13px; margin: 0 0 16px; }
+#bbl-home-announcements input { display: block; margin-top: 6px; width: 100%; min-width: 0; box-sizing: border-box; padding: 8px 10px; border: 1px solid #888; background: transparent; color: inherit; font: inherit; }
+#bbl-home-announcements input::placeholder { color: inherit; opacity: .7; }
+#bbl-home-announcements .bbl-feed-status { margin: 12px 0; font-size: 14px; }
+#bbl-home-announcements table { border-collapse: collapse; table-layout: fixed; width: 100%; margin: 0; color: inherit; font-size: 14px; background: transparent; }
+#bbl-home-announcements th, #bbl-home-announcements td { background: transparent; color: inherit; padding: 16px 8px; border: 0; border-bottom: 1px solid #8888; text-align: start; vertical-align: top; }
+#bbl-home-announcements th { border-bottom: 2px solid #888; font-weight: 600; }
+#bbl-home-announcements .column-date, #bbl-home-announcements .announcement-status-column { width: 115px; font-size: 13px; }
+#bbl-home-announcements .announcement-header { display: flex; align-items: start; gap: 12px; padding: 0; }
+#bbl-home-announcements .announcement-icon { flex: 0 0 28px; width: 28px; margin: 0; color: inherit; }
+#bbl-home-announcements svg { width: 28px; height: 28px; display: block; color: inherit; }
+#bbl-home-announcements .click-message-detail { flex: 1; min-width: 0; margin: 0; }
+#bbl-home-announcements a { color: inherit; text-decoration: underline; overflow-wrap: anywhere; }
+#bbl-home-announcements .bbl-feed-course { display: block; font-size: 13px; margin-bottom: 6px; }
+#bbl-home-announcements summary { cursor: pointer; list-style: none; }
+#bbl-home-announcements summary::-webkit-details-marker { display: none; }
+#bbl-home-announcements .list-item-title { color: inherit; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+#bbl-home-announcements summary:hover .list-item-title { text-decoration: underline; }
+#bbl-home-announcements .three-lines { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; margin: 8px 0 0; padding: 0; color: inherit; line-height: 1.5; font-size: 14px; word-break: normal; overflow-wrap: anywhere; }
+#bbl-home-announcements details[open] .three-lines { display: none; }
+#bbl-home-announcements .bbl-feed-message { margin-top: 16px; overflow-wrap: anywhere; color: inherit; line-height: 1.5; }
+#bbl-home-announcements .bbl-feed-message :is(p, div, span, strong, b, em, li, code, pre, th, td) { color: inherit; background: transparent; }
+#bbl-home-announcements .bbl-feed-message :is(ul, ol) { padding-inline-start: 24px; }
+#bbl-home-announcements .bbl-feed-message pre { white-space: pre-wrap; }
+#bbl-home-announcements .bbl-feed-view { display: inline-block; margin-top: 12px; font-size: 13px; }
+#bbl-home-announcements .bbl-feed-unread { display: inline-block; font-size: 11px; margin-inline-start: 8px; border: 1px solid currentColor; border-radius: 10px; padding: 1px 6px; }
+#bbl-home-announcements .bbl-feed-more { margin-top: 16px; width: 100%; }
+#bbl-home-announcements [hidden] { display: none !important; }
+#bbl-home-announcements :focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+@container (max-width: 480px) {
+  #bbl-home-announcements .bbl-feed-header { flex-wrap: wrap; }
+  #bbl-home-announcements thead .column-date { display: none; }
+  #bbl-home-announcements th { display: block; }
+  #bbl-home-announcements td { display: block; width: auto !important; }
+  #bbl-home-announcements .announcement-header-column { border-bottom: 0; padding-bottom: 4px; }
+  #bbl-home-announcements .announcement-status-column { padding-inline-start: 48px; padding-top: 4px; }
+}

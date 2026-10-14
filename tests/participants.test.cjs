@@ -78,47 +78,7 @@ test('search includes all requested columns and name sorting is numeric', () => 
 });
 
 // Small DOM fixture for behavior tests; all accounts and names are synthetic.
-function simpleMatch(node, selector) {
-  const attrs = [...selector.matchAll(/\[([^\]=^]+)(\^=|=)?(?:"([^"]*)")?\]/g)];
-  selector = selector.replace(/\[[^\]]*\]/g, '');
-  for (const [, key, op, value] of attrs) {
-    const actual = node.getAttribute(key);
-    if (actual === null || (op === '=' && actual !== value) || (op === '^=' && !actual.startsWith(value))) return false;
-  }
-  const tag = selector.match(/^[\w-]+/)?.[0]; if (tag && tag.toLowerCase() !== node.tagName.toLowerCase()) return false;
-  const id = selector.match(/#([\w-]+)/)?.[1]; if (id && node.id !== id) return false;
-  return [...selector.matchAll(/\.([\w-]+)/g)].every(([, name]) => node.className.split(/\s+/).includes(name));
-}
-function matches(node, selector) {
-  return selector.split(',').some(part => {
-    const pieces = part.trim().split(/\s+/); // fixtures have no spaces in attribute values
-    if (!simpleMatch(node, pieces.pop())) return false;
-    let ancestor = node.parentElement;
-    while (pieces.length) { const piece = pieces.pop(); while (ancestor && !simpleMatch(ancestor, piece)) ancestor = ancestor.parentElement; if (!ancestor) return false; ancestor = ancestor.parentElement; }
-    return true;
-  });
-}
-class Node {
-  constructor(tag, doc) { this.tagName = tag; this.doc = doc; this.children = []; this.parentElement = null; this.attrs = {}; this.className = ''; this.id = ''; this.dataset = {}; this.events = {}; this.value = ''; this._text = ''; this.style = { values: {}, setProperty(key, value) { this.values[key] = value; } }; }
-  get isConnected() { return this === this.doc.documentElement || Boolean(this.parentElement?.isConnected); }
-  get nextElementSibling() { return this.parentElement?.children[this.parentElement.children.indexOf(this) + 1] || null; }
-  get textContent() { return this._text + this.children.map(child => child.textContent).join(''); }
-  set textContent(value) { this.replaceChildren(); this._text = String(value); }
-  setAttribute(key, value) { if (key === 'id') this.id = String(value); else if (key === 'class') this.className = String(value); else this.attrs[key] = String(value); }
-  getAttribute(key) { return key === 'id' ? this.id || null : key === 'class' ? this.className || null : this.attrs[key] ?? null; }
-  appendChild(node) { node.remove(); this.children.push(node); node.parentElement = this; return node; }
-  insertBefore(node, before) { node.remove(); this.children.splice(this.children.indexOf(before), 0, node); node.parentElement = this; return node; }
-  remove() { if (this.parentElement) this.parentElement.children.splice(this.parentElement.children.indexOf(this), 1); this.parentElement = null; }
-  replaceChildren(...nodes) { this.children.forEach(child => { child.parentElement = null; }); this.children = []; this._text = ''; nodes.forEach(node => this.appendChild(node)); }
-  querySelectorAll(selector) { const result = []; const visit = node => { for (const child of node.children) { if (matches(child, selector)) result.push(child); visit(child); } }; visit(this); return result; }
-  querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
-  closest(selector) { let node = this; while (node) { if (matches(node, selector)) return node; node = node.parentElement; } return null; }
-  addEventListener(event, callback) { (this.events[event] ||= []).push(callback); }
-  fire(event) { for (const callback of this.events[event] || []) callback({ preventDefault() {}, stopPropagation() {}, target: this }); }
-  focus() { this.doc.activeElement = this; }
-  showModal() { this.open = true; }
-  close() { this.open = false; this.fire('close'); }
-}
+const { Node } = require('./dom-fixture.cjs');
 function fixture(fetch, lang = 'en', framed = false) {
   const doc = { readyState: 'complete', createElement(tag) { return new Node(tag, this); }, addEventListener() {} };
   doc.documentElement = new Node('html', doc); doc.documentElement.lang = lang;
